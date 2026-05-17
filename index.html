@@ -751,6 +751,26 @@
                     </button>
                 </header>
 
+                <!-- Tipo de cambio -->
+                <section class="surface p-5 flex flex-col sm:flex-row items-center justify-between gap-4">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-xl flex items-center justify-center" style="background: var(--accent-gold-soft); border: 1px solid var(--accent-gold);">
+                            <i class="fa-solid fa-dollar-sign" style="color: var(--accent-gold);"></i>
+                        </div>
+                        <div>
+                            <div class="text-[10px] uppercase tracking-widest" style="color: var(--text-tertiary);">Tipo de cambio</div>
+                            <div class="text-sm font-medium mt-0.5">1 USD = <span id="fx-display" class="font-mono number">—</span> CLP</div>
+                            <div id="fx-updated" class="text-[10px] mt-0.5" style="color: var(--text-muted);">—</div>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-2 w-full sm:w-auto">
+                        <input type="number" id="fx-input" min="0" step="0.01" placeholder="950" class="!w-28 font-mono">
+                        <button onclick="updateExchangeRate()" class="btn-primary px-4 py-2 rounded-lg text-xs cursor-pointer whitespace-nowrap">
+                            <i class="fa-solid fa-rotate text-[10px] mr-1"></i> Actualizar
+                        </button>
+                    </div>
+                </section>
+
                 <!-- KPIs globales de tarjetas -->
                 <section id="cards-kpis" class="grid grid-cols-2 md:grid-cols-3 gap-4">
                     <!-- JS -->
@@ -1245,20 +1265,11 @@
                 <label class="field-label">Nombre</label>
                 <input type="text" id="card-name" required placeholder="Ej. Visa Santander, Mastercard BCI...">
             </div>
+
             <div class="grid grid-cols-2 gap-3">
-                <div>
-                    <label class="field-label">Cupo total</label>
-                    <input type="number" id="card-limit" min="0" value="0" required>
-                </div>
                 <div>
                     <label class="field-label">Día de facturación</label>
                     <input type="number" id="card-cutoff-day" min="1" max="31" value="25">
-                </div>
-            </div>
-            <div class="grid grid-cols-2 gap-3">
-                <div>
-                    <label class="field-label">Color</label>
-                    <input type="color" id="card-color" value="#94a8c4">
                 </div>
                 <div>
                     <label class="field-label">Marca / Banco</label>
@@ -1270,6 +1281,45 @@
                         <option value="fa-cc-discover">Discover</option>
                     </select>
                 </div>
+            </div>
+
+            <!-- Cupos por moneda -->
+            <div class="surface-soft p-4 space-y-3">
+                <div class="text-[10px] uppercase tracking-widest" style="color: var(--text-tertiary);">Cupos disponibles</div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="field-label">Cupo CLP</label>
+                        <input type="number" id="card-limit-clp" min="0" value="0">
+                    </div>
+                    <div>
+                        <label class="field-label">Cupo USD</label>
+                        <input type="number" id="card-limit-usd" min="0" value="0" step="0.01">
+                    </div>
+                </div>
+                <p class="text-[10px]" style="color: var(--text-muted);">Deja en 0 las monedas que no uses</p>
+            </div>
+
+            <!-- Saldo inicial (deuda preexistente) -->
+            <div class="surface-soft p-4 space-y-3">
+                <div class="text-[10px] uppercase tracking-widest" style="color: var(--text-tertiary);">Saldo usado al iniciar <span class="ml-1" style="color: var(--text-muted); text-transform: none; letter-spacing: 0;">(opcional)</span></div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="field-label">Deuda CLP</label>
+                        <input type="number" id="card-initial-clp" min="0" value="0">
+                    </div>
+                    <div>
+                        <label class="field-label">Deuda USD</label>
+                        <input type="number" id="card-initial-usd" min="0" value="0" step="0.01">
+                    </div>
+                </div>
+                <p class="text-[10px]" style="color: var(--text-muted);">
+                    Útil al usar la app por primera vez sin necesidad de registrar movimientos detallados. Se sumará a la deuda calculada.
+                </p>
+            </div>
+
+            <div>
+                <label class="field-label">Color identificador</label>
+                <input type="color" id="card-color" value="#94a8c4">
             </div>
 
             <div class="pt-2 flex gap-3">
@@ -1315,10 +1365,17 @@
                 <input type="text" id="card-tx-desc" required placeholder="Ej. Almuerzo, Amazon, Bencina...">
             </div>
 
-            <div class="grid grid-cols-2 gap-3">
+            <div class="grid grid-cols-3 gap-3">
+                <div>
+                    <label class="field-label">Moneda</label>
+                    <select id="card-tx-currency">
+                        <option value="CLP">$ CLP</option>
+                        <option value="USD">US$ USD</option>
+                    </select>
+                </div>
                 <div>
                     <label class="field-label">Monto</label>
-                    <input type="number" id="card-tx-amount" min="1" required>
+                    <input type="number" id="card-tx-amount" min="0.01" step="0.01" required>
                 </div>
                 <div>
                     <label class="field-label">Cuotas</label>
@@ -1452,13 +1509,21 @@ let goalsViewType = 'goals'; // 'goals' | 'budgets'
 
 // Tarjetas de crédito (NO afectan el patrimonio neto)
 let creditCards = [
-    { id: 501, name: 'Visa Santander', limit: 1500000, cutoffDay: 25, color: '#94a8c4', icon: 'fa-cc-visa', transactions: [] }
+    {
+        id: 501, name: 'Visa Santander', cutoffDay: 25, color: '#94a8c4', icon: 'fa-cc-visa',
+        limitCLP: 1500000, limitUSD: 2000,
+        initialDebtCLP: 0, initialDebtUSD: 0,
+        transactions: []
+    }
 ];
 
-// Selectores de comparación de gráficos (qué cuentas incluir en cada uno)
+// Tipo de cambio USD → CLP (lo configura el usuario manualmente)
+let exchangeRate = { usdToClp: 950, updatedAt: null };
+
+// Selectores de comparación de gráficos
 let chartCompareSelections = {
-    line: [],      // [] = usar selector global (comportamiento clásico). Si tiene IDs = multi-cuenta
-    balances: []   // [] = todas. Si tiene IDs = filtrar a esas
+    line: [],
+    balances: []
 };
 
 let fixedMonthCursor = null;
@@ -1479,6 +1544,7 @@ function saveState() {
             budgets,
             goalsViewType,
             creditCards,
+            exchangeRate,
             chartCompareSelections,
             savedAt: new Date().toISOString()
         }));
@@ -1501,7 +1567,19 @@ function loadState() {
             if (Array.isArray(parsed.goals)) goals = parsed.goals;
             if (Array.isArray(parsed.budgets)) budgets = parsed.budgets;
             if (parsed.goalsViewType === 'goals' || parsed.goalsViewType === 'budgets') goalsViewType = parsed.goalsViewType;
-            if (Array.isArray(parsed.creditCards)) creditCards = parsed.creditCards;
+            if (Array.isArray(parsed.creditCards)) {
+                // Migración: tarjetas viejas que tenían solo `limit` → migrar a limitCLP
+                creditCards = parsed.creditCards.map(c => {
+                    if (c.limitCLP === undefined && c.limit !== undefined) {
+                        return { ...c, limitCLP: c.limit, limitUSD: 0, initialDebtCLP: 0, initialDebtUSD: 0 };
+                    }
+                    return {
+                        limitCLP: 0, limitUSD: 0, initialDebtCLP: 0, initialDebtUSD: 0,
+                        ...c
+                    };
+                });
+            }
+            if (parsed.exchangeRate && typeof parsed.exchangeRate === 'object') exchangeRate = parsed.exchangeRate;
             if (parsed.chartCompareSelections && typeof parsed.chartCompareSelections === 'object') {
                 chartCompareSelections = Object.assign(chartCompareSelections, parsed.chartCompareSelections);
             }
@@ -3707,12 +3785,40 @@ document.addEventListener('click', (e) => {
 //  TARJETAS DE CRÉDITO
 // ============================================================
 
+// Helper para formato USD
+const formatUSD = (val) =>
+    new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2 }).format(val);
+
+// Suma de movimientos de la tarjeta, devuelve { clp, usd } separados
 function getCardBalance(card) {
-    // Suma de movimientos de la tarjeta (compras suman, reembolsos restan)
-    if (!card.transactions) return 0;
-    return card.transactions.reduce((sum, t) => {
-        return sum + (t.type === 'compra' ? t.amount : -t.amount);
-    }, 0);
+    let clp = card.initialDebtCLP || 0;
+    let usd = card.initialDebtUSD || 0;
+    (card.transactions || []).forEach(t => {
+        const sign = t.type === 'compra' ? 1 : -1;
+        if (t.currency === 'USD') usd += sign * t.amount;
+        else clp += sign * t.amount;
+    });
+    return { clp, usd };
+}
+
+// Convierte cualquier balance a CLP total usando el tipo de cambio actual
+function balanceToCLP(balance) {
+    const rate = exchangeRate.usdToClp || 0;
+    return balance.clp + (balance.usd * rate);
+}
+
+function updateExchangeRate() {
+    const input = document.getElementById('fx-input');
+    const val = parseFloat(input.value);
+    if (!val || val <= 0) {
+        showToast('Ingresa un valor válido', 'triangle-exclamation', 'coral');
+        return;
+    }
+    exchangeRate.usdToClp = val;
+    exchangeRate.updatedAt = new Date().toISOString();
+    saveState();
+    renderCardsView();
+    showToast('Tipo de cambio actualizado');
 }
 
 function renderCardsView() {
@@ -3720,24 +3826,52 @@ function renderCardsView() {
     const emptyEl = document.getElementById('cards-empty-state');
     const kpisEl = document.getElementById('cards-kpis');
 
-    // KPIs globales
-    let totalDebt = 0, totalLimit = 0;
+    // Renderizar panel de tipo de cambio
+    const fxDisplay = document.getElementById('fx-display');
+    const fxUpdated = document.getElementById('fx-updated');
+    const fxInput = document.getElementById('fx-input');
+    if (fxDisplay) {
+        fxDisplay.innerText = exchangeRate.usdToClp ? `$${exchangeRate.usdToClp.toLocaleString('es-CL')}` : '—';
+    }
+    if (fxUpdated) {
+        fxUpdated.innerText = exchangeRate.updatedAt
+            ? `Actualizado ${formatRelativeTime(exchangeRate.updatedAt)}`
+            : 'Sin actualizar';
+    }
+    if (fxInput && !fxInput.value) {
+        fxInput.value = exchangeRate.usdToClp || '';
+    }
+
+    // KPIs globales (todo en CLP equivalente)
+    let totalDebtCLP = 0;
+    let totalDebtUSD = 0;
+    let totalLimitCLP = 0;
+    let totalLimitUSD = 0;
+
     creditCards.forEach(c => {
-        totalDebt += getCardBalance(c);
-        totalLimit += (c.limit || 0);
+        const bal = getCardBalance(c);
+        totalDebtCLP += bal.clp;
+        totalDebtUSD += bal.usd;
+        totalLimitCLP += (c.limitCLP || 0);
+        totalLimitUSD += (c.limitUSD || 0);
     });
-    const availableCredit = totalLimit - totalDebt;
-    const utilization = totalLimit > 0 ? (totalDebt / totalLimit) * 100 : 0;
+
+    const totalDebtEqCLP = totalDebtCLP + (totalDebtUSD * (exchangeRate.usdToClp || 0));
+    const totalLimitEqCLP = totalLimitCLP + (totalLimitUSD * (exchangeRate.usdToClp || 0));
+    const availableEq = totalLimitEqCLP - totalDebtEqCLP;
+    const utilization = totalLimitEqCLP > 0 ? (totalDebtEqCLP / totalLimitEqCLP) * 100 : 0;
 
     kpisEl.innerHTML = `
         <div class="surface kpi-card p-5">
-            <div class="badge mb-2" style="color: var(--text-tertiary);">Deuda total</div>
-            <div class="font-serif text-2xl font-light number" style="color: var(--accent-coral);">${formatCurrency(totalDebt)}</div>
-            <div class="text-[11px] mt-1" style="color: var(--text-muted);">de ${formatCurrency(totalLimit)} de cupo</div>
+            <div class="badge mb-2" style="color: var(--text-tertiary);">Deuda total (CLP eq.)</div>
+            <div class="font-serif text-2xl font-light number" style="color: var(--accent-coral);">${formatCurrency(totalDebtEqCLP)}</div>
+            <div class="text-[11px] mt-1" style="color: var(--text-muted);">
+                ${formatCurrency(totalDebtCLP)} + ${formatUSD(totalDebtUSD)}
+            </div>
         </div>
         <div class="surface kpi-card p-5">
             <div class="badge mb-2" style="color: var(--text-tertiary);">Cupo disponible</div>
-            <div class="font-serif text-2xl font-light number" style="color: var(--accent-sage);">${formatCurrency(availableCredit)}</div>
+            <div class="font-serif text-2xl font-light number" style="color: var(--accent-sage);">${formatCurrency(availableEq)}</div>
             <div class="text-[11px] mt-1" style="color: var(--text-muted);">no es capital tuyo</div>
         </div>
         <div class="surface kpi-card p-5">
@@ -3757,13 +3891,30 @@ function renderCardsView() {
     emptyEl.classList.add('hidden');
 
     listEl.innerHTML = creditCards.map(card => {
-        const debt = getCardBalance(card);
-        const available = (card.limit || 0) - debt;
-        const utilPct = card.limit > 0 ? (debt / card.limit) * 100 : 0;
+        const bal = getCardBalance(card);
+        const debtCLP = bal.clp;
+        const debtUSD = bal.usd;
+        const limitCLP = card.limitCLP || 0;
+        const limitUSD = card.limitUSD || 0;
+        const availableCLP = limitCLP - debtCLP;
+        const availableUSD = limitUSD - debtUSD;
+
+        // Equivalente total en CLP
+        const debtTotalEq = debtCLP + (debtUSD * (exchangeRate.usdToClp || 0));
+        const limitTotalEq = limitCLP + (limitUSD * (exchangeRate.usdToClp || 0));
+        const utilPct = limitTotalEq > 0 ? (debtTotalEq / limitTotalEq) * 100 : 0;
+
+        const hasUSD = limitUSD > 0 || debtUSD > 0;
+        const hasCLP = limitCLP > 0 || debtCLP > 0;
+
         const txs = [...(card.transactions || [])].sort((a, b) => new Date(b.date) - new Date(a.date));
 
+        const fmtTxAmount = (t) => {
+            return t.currency === 'USD' ? formatUSD(t.amount) : formatCurrency(t.amount);
+        };
+
         const txRows = txs.length === 0
-            ? `<tr><td colspan="5" class="py-6 text-center text-xs" style="color: var(--text-tertiary);">Sin movimientos registrados</td></tr>`
+            ? `<tr><td colspan="6" class="py-6 text-center text-xs" style="color: var(--text-tertiary);">${card.initialDebtCLP || card.initialDebtUSD ? 'Solo deuda inicial registrada, sin movimientos detallados' : 'Sin movimientos registrados'}</td></tr>`
             : txs.map(t => {
                 const isCompra = t.type === 'compra';
                 const sign = isCompra ? '+' : '−';
@@ -3771,6 +3922,7 @@ function renderCardsView() {
                 const cuotasNote = t.installments && t.installments > 1
                     ? `<span class="text-[10px] font-mono ml-2 px-1.5 py-0.5 rounded" style="background: var(--bg-base); color: var(--text-tertiary);">${t.installments} cuotas</span>`
                     : '';
+                const currencyBadge = `<span class="text-[10px] font-mono ml-1 opacity-60">${t.currency || 'CLP'}</span>`;
                 return `
                     <tr style="border-bottom: 1px solid var(--border-subtle);" class="hover:bg-white/[0.02] transition-colors">
                         <td class="py-3 font-mono text-[11px]" style="color: var(--text-tertiary);">${t.date}</td>
@@ -3784,7 +3936,7 @@ function renderCardsView() {
                             <div class="text-[10px]" style="color: var(--text-tertiary);">${t.category}</div>
                         </td>
                         <td class="py-3 text-right font-mono font-medium number" style="color: ${color};">
-                            ${sign}${formatCurrency(t.amount)}
+                            ${sign}${fmtTxAmount(t)}${currencyBadge}
                         </td>
                         <td class="py-3 text-right whitespace-nowrap">
                             <button onclick="editCardTx(${card.id}, ${t.id})" class="w-7 h-7 rounded-lg cursor-pointer inline-flex items-center justify-center" style="background: rgba(255,255,255,0.03);">
@@ -3795,11 +3947,87 @@ function renderCardsView() {
                 `;
             }).join('');
 
+        // Bloques de cupos por moneda (solo si la tarjeta tiene esa moneda configurada)
+        let currencyBlocks = '';
+
+        if (hasCLP) {
+            const utilClp = limitCLP > 0 ? (debtCLP / limitCLP) * 100 : 0;
+            currencyBlocks += `
+                <div class="surface-soft p-4">
+                    <div class="flex items-center justify-between mb-3">
+                        <span class="badge" style="color: var(--text-secondary);"><i class="fa-solid fa-dollar-sign text-[9px] mr-1"></i>CLP</span>
+                        <span class="font-mono text-[10px]" style="color: var(--text-tertiary);">${utilClp.toFixed(0)}% usado</span>
+                    </div>
+                    <div class="grid grid-cols-3 gap-2 text-center">
+                        <div>
+                            <div class="text-[9px] uppercase tracking-widest" style="color: var(--text-tertiary);">Deuda</div>
+                            <div class="font-mono text-sm font-medium number mt-1" style="color: var(--accent-coral);">${formatCurrency(debtCLP)}</div>
+                        </div>
+                        <div>
+                            <div class="text-[9px] uppercase tracking-widest" style="color: var(--text-tertiary);">Disponible</div>
+                            <div class="font-mono text-sm font-medium number mt-1" style="color: var(--accent-sage);">${formatCurrency(availableCLP)}</div>
+                        </div>
+                        <div>
+                            <div class="text-[9px] uppercase tracking-widest" style="color: var(--text-tertiary);">Cupo</div>
+                            <div class="font-mono text-sm font-medium number mt-1" style="color: var(--text-secondary);">${formatCurrency(limitCLP)}</div>
+                        </div>
+                    </div>
+                    <div class="progress-track mt-3" style="height: 4px;">
+                        <div class="progress-fill" style="width: ${Math.min(100, utilClp)}%; background: ${card.color};"></div>
+                    </div>
+                </div>
+            `;
+        }
+
+        if (hasUSD) {
+            const utilUsd = limitUSD > 0 ? (debtUSD / limitUSD) * 100 : 0;
+            currencyBlocks += `
+                <div class="surface-soft p-4">
+                    <div class="flex items-center justify-between mb-3">
+                        <span class="badge" style="color: var(--text-secondary);"><i class="fa-solid fa-globe text-[9px] mr-1"></i>USD</span>
+                        <span class="font-mono text-[10px]" style="color: var(--text-tertiary);">${utilUsd.toFixed(0)}% usado</span>
+                    </div>
+                    <div class="grid grid-cols-3 gap-2 text-center">
+                        <div>
+                            <div class="text-[9px] uppercase tracking-widest" style="color: var(--text-tertiary);">Deuda</div>
+                            <div class="font-mono text-sm font-medium number mt-1" style="color: var(--accent-coral);">${formatUSD(debtUSD)}</div>
+                        </div>
+                        <div>
+                            <div class="text-[9px] uppercase tracking-widest" style="color: var(--text-tertiary);">Disponible</div>
+                            <div class="font-mono text-sm font-medium number mt-1" style="color: var(--accent-sage);">${formatUSD(availableUSD)}</div>
+                        </div>
+                        <div>
+                            <div class="text-[9px] uppercase tracking-widest" style="color: var(--text-tertiary);">Cupo</div>
+                            <div class="font-mono text-sm font-medium number mt-1" style="color: var(--text-secondary);">${formatUSD(limitUSD)}</div>
+                        </div>
+                    </div>
+                    <div class="progress-track mt-3" style="height: 4px;">
+                        <div class="progress-fill" style="width: ${Math.min(100, utilUsd)}%; background: ${card.color};"></div>
+                    </div>
+                </div>
+            `;
+        }
+
+        if (!hasCLP && !hasUSD) {
+            currencyBlocks = `<div class="text-xs text-center py-4" style="color: var(--text-tertiary);">Sin cupos configurados. Edita la tarjeta para añadir CLP o USD.</div>`;
+        }
+
+        // Total consolidado solo si hay ambas monedas
+        const consolidatedRow = hasCLP && hasUSD ? `
+            <div class="mt-4 pt-4 flex items-center justify-between" style="border-top: 1px solid var(--border-subtle);">
+                <span class="text-[10px] uppercase tracking-widest" style="color: var(--text-tertiary);">Total consolidado (CLP eq.)</span>
+                <div class="text-right">
+                    <div class="font-mono text-base font-medium number" style="color: var(--accent-coral);">${formatCurrency(debtTotalEq)}</div>
+                    <div class="text-[10px]" style="color: var(--text-muted);">${utilPct.toFixed(0)}% de ${formatCurrency(limitTotalEq)}</div>
+                </div>
+            </div>
+        ` : '';
+
         return `
             <div class="surface overflow-hidden">
                 <!-- Header de tarjeta -->
                 <div class="p-6 relative" style="background: linear-gradient(135deg, ${card.color}33 0%, var(--bg-elevated) 60%); border-bottom: 1px solid var(--border-subtle);">
-                    <div class="flex items-start justify-between gap-4 flex-wrap">
+                    <div class="flex items-start justify-between gap-4 flex-wrap mb-5">
                         <div class="flex items-center gap-3">
                             <div class="w-12 h-12 rounded-xl flex items-center justify-center" style="background: ${card.color}33; border: 1px solid ${card.color};">
                                 <i class="fa-${card.icon.startsWith('cc-') ? 'brands' : 'solid'} ${card.icon} text-xl" style="color: ${card.color};"></i>
@@ -3819,24 +4047,12 @@ function renderCardsView() {
                         </div>
                     </div>
 
-                    <div class="grid grid-cols-3 gap-4 mt-5">
-                        <div>
-                            <div class="text-[10px] uppercase tracking-widest" style="color: var(--text-tertiary);">Deuda actual</div>
-                            <div class="font-mono text-lg font-medium number mt-1" style="color: var(--accent-coral);">${formatCurrency(debt)}</div>
-                        </div>
-                        <div>
-                            <div class="text-[10px] uppercase tracking-widest" style="color: var(--text-tertiary);">Disponible</div>
-                            <div class="font-mono text-lg font-medium number mt-1" style="color: var(--accent-sage);">${formatCurrency(available)}</div>
-                        </div>
-                        <div>
-                            <div class="text-[10px] uppercase tracking-widest" style="color: var(--text-tertiary);">Cupo</div>
-                            <div class="font-mono text-lg font-medium number mt-1" style="color: var(--text-secondary);">${formatCurrency(card.limit || 0)}</div>
-                        </div>
+                    <!-- Bloques de cupos por moneda -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        ${currencyBlocks}
                     </div>
-                    <div class="progress-track mt-4" style="height: 6px;">
-                        <div class="progress-fill" style="width: ${Math.min(100, utilPct)}%; background: ${card.color};"></div>
-                    </div>
-                    <div class="text-[10px] text-right mt-1.5" style="color: var(--text-tertiary);">${utilPct.toFixed(0)}% utilizado</div>
+
+                    ${consolidatedRow}
                 </div>
 
                 <!-- Tabla de movimientos -->
@@ -3868,6 +4084,10 @@ function openCardModal() {
     document.getElementById('card-form').reset();
     document.getElementById('edit-card-id').value = "";
     document.getElementById('card-color').value = '#94a8c4';
+    document.getElementById('card-limit-clp').value = 0;
+    document.getElementById('card-limit-usd').value = 0;
+    document.getElementById('card-initial-clp').value = 0;
+    document.getElementById('card-initial-usd').value = 0;
     document.getElementById('card-modal-title').innerText = 'Nueva tarjeta de crédito';
     document.getElementById('btn-delete-card').classList.add('hidden');
     openModal('card-modal');
@@ -3878,7 +4098,10 @@ function editCard(id) {
     if (!c) return;
     document.getElementById('edit-card-id').value = c.id;
     document.getElementById('card-name').value = c.name;
-    document.getElementById('card-limit').value = c.limit;
+    document.getElementById('card-limit-clp').value = c.limitCLP || 0;
+    document.getElementById('card-limit-usd').value = c.limitUSD || 0;
+    document.getElementById('card-initial-clp').value = c.initialDebtCLP || 0;
+    document.getElementById('card-initial-usd').value = c.initialDebtUSD || 0;
     document.getElementById('card-cutoff-day').value = c.cutoffDay || 25;
     document.getElementById('card-color').value = c.color;
     document.getElementById('card-icon').value = c.icon;
@@ -3892,7 +4115,10 @@ function handleCardSubmit(e) {
     const idEdit = document.getElementById('edit-card-id').value;
     const data = {
         name: document.getElementById('card-name').value,
-        limit: parseInt(document.getElementById('card-limit').value) || 0,
+        limitCLP: parseInt(document.getElementById('card-limit-clp').value) || 0,
+        limitUSD: parseFloat(document.getElementById('card-limit-usd').value) || 0,
+        initialDebtCLP: parseInt(document.getElementById('card-initial-clp').value) || 0,
+        initialDebtUSD: parseFloat(document.getElementById('card-initial-usd').value) || 0,
         cutoffDay: Math.min(31, Math.max(1, parseInt(document.getElementById('card-cutoff-day').value) || 25)),
         color: document.getElementById('card-color').value,
         icon: document.getElementById('card-icon').value
@@ -3936,6 +4162,8 @@ function openCardTxModal(cardId) {
     document.getElementById('card-tx-modal-subtitle').innerText = c.name;
     document.getElementById('card-type-compra').checked = true;
     document.getElementById('card-tx-installments').value = 1;
+    // Moneda por defecto: la que tenga cupo
+    document.getElementById('card-tx-currency').value = (c.limitUSD > 0 && c.limitCLP === 0) ? 'USD' : 'CLP';
     document.getElementById('card-tx-date').value = new Date().toISOString().split('T')[0];
     document.getElementById('btn-delete-card-tx').classList.add('hidden');
     openModal('card-tx-modal');
@@ -3951,6 +4179,7 @@ function editCardTx(cardId, txId) {
     document.getElementById(`card-type-${t.type}`).checked = true;
     document.getElementById('card-tx-desc').value = t.desc;
     document.getElementById('card-tx-amount').value = t.amount;
+    document.getElementById('card-tx-currency').value = t.currency || 'CLP';
     document.getElementById('card-tx-installments').value = t.installments || 1;
     document.getElementById('card-tx-category').value = t.category;
     document.getElementById('card-tx-date').value = t.date;
@@ -3970,7 +4199,8 @@ function handleCardTxSubmit(e) {
     const data = {
         type: document.querySelector('input[name="card-tx-type"]:checked').value,
         desc: document.getElementById('card-tx-desc').value,
-        amount: parseInt(document.getElementById('card-tx-amount').value) || 0,
+        amount: parseFloat(document.getElementById('card-tx-amount').value) || 0,
+        currency: document.getElementById('card-tx-currency').value,
         installments: parseInt(document.getElementById('card-tx-installments').value) || 1,
         category: document.getElementById('card-tx-category').value,
         date: document.getElementById('card-tx-date').value
@@ -4141,7 +4371,7 @@ async function ghUpdateGist(token, gistId, data) {
 
 function buildPayload() {
     return {
-        schemaVersion: 'capital_v5',
+        schemaVersion: 'capital_v6',
         savedAt: new Date().toISOString(),
         accountsData,
         transactions,
@@ -4152,6 +4382,7 @@ function buildPayload() {
         budgets,
         goalsViewType,
         creditCards,
+        exchangeRate,
         chartCompareSelections
     };
 }
@@ -4169,6 +4400,7 @@ function applyPayload(payload) {
     if (Array.isArray(payload.budgets)) budgets = payload.budgets;
     if (payload.goalsViewType === 'goals' || payload.goalsViewType === 'budgets') goalsViewType = payload.goalsViewType;
     if (Array.isArray(payload.creditCards)) creditCards = payload.creditCards;
+    if (payload.exchangeRate && typeof payload.exchangeRate === 'object') exchangeRate = payload.exchangeRate;
     if (payload.chartCompareSelections && typeof payload.chartCompareSelections === 'object') {
         chartCompareSelections = Object.assign(chartCompareSelections, payload.chartCompareSelections);
     }
