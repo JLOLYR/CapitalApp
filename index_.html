@@ -1,17 +1,19 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
+    <link rel="manifest" href="manifest.json">
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./service-worker.js')
+                    .then(reg => console.log('SW registrado', reg))
+                    .catch(err => console.log('SW error', err));
+            });
+        }
+    </script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Capital — Dashboard de Finanzas Personales</title>
-
-    <!-- ============ PWA ============ -->
-    <link rel="manifest" href="./manifest.json">
-    <meta name="theme-color" content="#0a0b0d">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="Capital">
-    <link rel="apple-touch-icon" href="./icons/icon-192.png">
 
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 rx=%2220%22 fill=%22%23c9a875%22/><text x=%2250%22 y=%2272%22 text-anchor=%22middle%22 font-size=%2260%22 font-family=%22Georgia%22 fill=%22%231c1410%22 font-weight=%22bold%22>C</text></svg>">
 
@@ -70,6 +72,9 @@
             background: linear-gradient(180deg, var(--bg-raised) 0%, var(--bg-elevated) 100%);
             border: 1px solid var(--border-subtle);
             border-radius: 16px;
+        }
+        @media (max-width: 768px) {
+        button, select { min-height: 44px; } /* Estándar de accesibilidad Apple/Android */
         }
 
         .surface-soft {
@@ -239,7 +244,7 @@
             </button>
             <button onclick="switchTab('fijos')" id="tab-fijos" class="tab-item w-full px-3 py-2.5 flex items-center text-sm font-medium cursor-pointer">
                 <i class="fa-regular fa-calendar-check mr-3 w-4 text-center text-xs"></i>
-                <span>Flujos fijos</span>
+                <span>Gastos fijos</span>
             </button>
             <button onclick="switchTab('cuentas')" id="tab-cuentas" class="tab-item w-full px-3 py-2.5 flex items-center text-sm font-medium cursor-pointer">
                 <i class="fa-regular fa-credit-card mr-3 w-4 text-center text-xs"></i>
@@ -448,30 +453,18 @@
                 </div>
             </div>
 
-            <!-- ====== VISTA: FLUJOS FIJOS ====== -->
+            <!-- ====== VISTA: GASTOS FIJOS ====== -->
             <div id="view-fijos" class="hidden space-y-6">
                 <header class="flex flex-col md:flex-row md:items-end justify-between gap-4">
                     <div>
-                        <div id="fixed-header-badge" class="badge mb-2" style="color: var(--accent-gold);">— Recurrente mensual</div>
-                        <h1 id="fixed-header-title" class="font-serif text-4xl font-light tracking-tight">Flujos fijos</h1>
-                        <p id="fixed-header-subtitle" class="text-sm mt-2" style="color: var(--text-tertiary);">Controla pagos e ingresos recurrentes mes a mes</p>
+                        <div class="badge mb-2" style="color: var(--accent-gold);">— Recurrente mensual</div>
+                        <h1 class="font-serif text-4xl font-light tracking-tight">Gastos fijos</h1>
+                        <p class="text-sm mt-2" style="color: var(--text-tertiary);">Controla pagos recurrentes y márcalos al cancelarlos</p>
                     </div>
-                    <button onclick="openFixedExpenseModal()" id="btn-add-fixed" class="btn-primary px-5 py-2.5 rounded-xl text-sm flex items-center justify-center gap-2 cursor-pointer whitespace-nowrap">
+                    <button onclick="openFixedExpenseModal()" class="btn-primary px-5 py-2.5 rounded-xl text-sm flex items-center justify-center gap-2 cursor-pointer whitespace-nowrap">
                         <i class="fa-solid fa-plus text-xs"></i> Añadir gasto fijo
                     </button>
                 </header>
-
-                <!-- Toggle Gastos/Ingresos -->
-                <div class="flex justify-center">
-                    <div class="inline-flex p-1 rounded-xl gap-1" style="background: var(--bg-raised); border: 1px solid var(--border-subtle);">
-                        <button onclick="switchFixedFlowType('expense')" id="flow-toggle-expense" class="px-5 py-2 text-xs font-semibold rounded-lg cursor-pointer transition-all flex items-center gap-2" style="background: var(--bg-elevated); color: var(--text-primary);">
-                            <i class="fa-solid fa-arrow-up text-[10px]" style="color: var(--accent-coral);"></i> Gastos fijos
-                        </button>
-                        <button onclick="switchFixedFlowType('income')" id="flow-toggle-income" class="px-5 py-2 text-xs font-semibold rounded-lg cursor-pointer transition-all flex items-center gap-2" style="color: var(--text-tertiary);">
-                            <i class="fa-solid fa-arrow-down text-[10px]" style="color: var(--accent-sage);"></i> Ingresos fijos
-                        </button>
-                    </div>
-                </div>
 
                 <!-- Selector de mes + KPIs -->
                 <section class="surface p-6 lg:p-7">
@@ -495,22 +488,22 @@
                             <div id="fixed-total" class="font-serif text-xl font-light number">$0</div>
                         </div>
                         <div class="surface-soft p-4">
-                            <div id="kpi-completed-label" class="badge mb-2" style="color: var(--accent-sage);">Pagado</div>
+                            <div class="badge mb-2" style="color: var(--accent-sage);">Pagado</div>
                             <div id="fixed-paid" class="font-serif text-xl font-light number" style="color: var(--accent-sage);">$0</div>
                         </div>
                         <div class="surface-soft p-4">
-                            <div id="kpi-pending-label" class="badge mb-2" style="color: var(--accent-gold);">Pendiente</div>
+                            <div class="badge mb-2" style="color: var(--accent-gold);">Pendiente</div>
                             <div id="fixed-pending" class="font-serif text-xl font-light number" style="color: var(--accent-gold);">$0</div>
                         </div>
                         <div class="surface-soft p-4">
-                            <div id="kpi-alert-label" class="badge mb-2" style="color: var(--accent-coral);">Vencidos</div>
+                            <div class="badge mb-2" style="color: var(--accent-coral);">Vencidos</div>
                             <div id="fixed-overdue" class="font-serif text-xl font-light number" style="color: var(--accent-coral);">0</div>
                         </div>
                     </div>
 
                     <div>
                         <div class="flex justify-between text-xs mb-2" style="color: var(--text-tertiary);">
-                            <span id="fixed-progress-title">Progreso del mes</span>
+                            <span>Progreso del mes</span>
                             <span id="fixed-progress-label" class="font-mono">0 / 0 pagados</span>
                         </div>
                         <div class="progress-track" style="height: 8px;">
@@ -526,8 +519,8 @@
 
                 <div id="fixed-empty-state" class="hidden surface p-10 text-center">
                     <i class="fa-regular fa-calendar text-3xl mb-3" style="color: var(--text-muted);"></i>
-                    <p id="fixed-empty-title" class="font-serif text-lg" style="color: var(--text-secondary);">Sin gastos fijos registrados</p>
-                    <p id="fixed-empty-subtitle" class="text-xs mt-1" style="color: var(--text-tertiary);">Añade tu primer pago recurrente para empezar el seguimiento</p>
+                    <p class="font-serif text-lg" style="color: var(--text-secondary);">Sin gastos fijos registrados</p>
+                    <p class="text-xs mt-1" style="color: var(--text-tertiary);">Añade tu primer pago recurrente para empezar el seguimiento</p>
                 </div>
             </div>
 
@@ -759,18 +752,26 @@
                     <input type="number" id="fixed-amount" min="0" required placeholder="0">
                 </div>
                 <div>
-                    <label id="lbl-fixed-due-day" class="field-label">Día de vencimiento</label>
+                    <label class="field-label">Día de vencimiento</label>
                     <input type="number" id="fixed-due-day" min="1" max="31" value="1" required>
                 </div>
             </div>
             <div>
-                <label id="lbl-fixed-account" class="field-label">Cuenta de pago por defecto</label>
+                <label class="field-label">Cuenta de pago por defecto</label>
                 <select id="fixed-account"></select>
             </div>
             <div>
                 <label class="field-label">Categoría</label>
                 <select id="fixed-category">
-                    <!-- Cargado dinámicamente desde JS -->
+                    <option value="Arriendo">🔑 Arriendo</option>
+                    <option value="Dividendo">🏠 Dividendo</option>
+                    <option value="Servicios">💡 Servicios / Cuentas</option>
+                    <option value="Membresías">💎 Membresías</option>
+                    <option value="Vehículo">🚗 Vehículo</option>
+                    <option value="Educación">📚 Educación</option>
+                    <option value="Salud">⚕️ Salud</option>
+                    <option value="Transporte">🚌 Transporte</option>
+                    <option value="Otro">📦 Otro</option>
                 </select>
             </div>
             <div class="grid grid-cols-2 gap-3">
@@ -781,7 +782,21 @@
                 <div>
                     <label class="field-label">Ícono</label>
                     <select id="fixed-icon">
-                        <!-- Cargado dinámicamente desde JS -->
+                        <option value="fa-key">🔑 Llave</option>
+                        <option value="fa-house">🏠 Casa</option>
+                        <option value="fa-bolt">⚡ Luz</option>
+                        <option value="fa-droplet">💧 Agua</option>
+                        <option value="fa-fire">🔥 Gas</option>
+                        <option value="fa-wifi">📶 Internet</option>
+                        <option value="fa-mobile-screen">📱 Celular</option>
+                        <option value="fa-tv">📺 Streaming</option>
+                        <option value="fa-dumbbell">🏋️ Gimnasio</option>
+                        <option value="fa-car">🚗 Auto</option>
+                        <option value="fa-graduation-cap">🎓 Educación</option>
+                        <option value="fa-heart-pulse">💗 Salud</option>
+                        <option value="fa-shield-halved">🛡️ Seguro</option>
+                        <option value="fa-credit-card">💳 Tarjeta</option>
+                        <option value="fa-receipt">🧾 Otro</option>
                     </select>
                 </div>
             </div>
@@ -803,24 +818,24 @@
         <button onclick="closeModal('payment-modal')" class="absolute top-5 right-5 w-8 h-8 rounded-lg flex items-center justify-center cursor-pointer" style="background: rgba(255,255,255,0.04); color: var(--text-tertiary);">
             <i class="fa-solid fa-xmark text-sm"></i>
         </button>
-        <h3 id="payment-modal-title" class="font-serif text-xl font-medium tracking-tight mb-1">Confirmar pago</h3>
+        <h3 class="font-serif text-xl font-medium tracking-tight mb-1">Confirmar pago</h3>
         <p id="payment-modal-subtitle" class="text-xs mb-5" style="color: var(--text-tertiary);">—</p>
 
         <form id="payment-form" onsubmit="confirmFixedPayment(event)" class="space-y-4">
             <input type="hidden" id="payment-fixed-id">
             <div>
-                <label id="lbl-payment-amount" class="field-label">Monto real pagado</label>
+                <label class="field-label">Monto real pagado</label>
                 <input type="number" id="payment-amount" min="1" required>
             </div>
             <div>
-                <label id="lbl-payment-account" class="field-label">Cuenta de origen</label>
+                <label class="field-label">Cuenta de origen</label>
                 <select id="payment-account" required></select>
             </div>
             <div>
-                <label id="lbl-payment-date" class="field-label">Fecha del pago</label>
+                <label class="field-label">Fecha del pago</label>
                 <input type="date" id="payment-date" required>
             </div>
-            <p id="payment-info-text" class="text-[11px] leading-relaxed" style="color: var(--text-muted);">
+            <p class="text-[11px] leading-relaxed" style="color: var(--text-muted);">
                 <i class="fa-solid fa-info-circle mr-1"></i>
                 Al confirmar se creará automáticamente la transacción en tu bitácora y se descontará el saldo de la cuenta.
             </p>
@@ -889,13 +904,7 @@ let fixedExpenses = [
     { id: 105, name: 'Netflix', amount: 9000, dueDay: 25, category: 'Membresías', accountId: 'scotiabank', color: '#a78bfa', icon: 'fa-tv', payments: {} }
 ];
 
-let fixedIncomes = [
-    { id: 201, name: 'Sueldo', amount: 2500000, dueDay: 1, category: 'Sueldo / Retornos', accountId: 'scotiabank', color: '#84cc8e', icon: 'fa-briefcase', payments: {} }
-];
-
-let fixedFlowType = 'expense'; // 'expense' | 'income'
-
-let fixedMonthCursor = null;
+let fixedMonthCursor = null; // formato 'YYYY-MM'
 
 let currentConstraints = { timeframe: 'mensual', account: 'all' };
 let chartLine, chartPieCategory, chartBar, chartProjection, chartAccountBalances, chartCashFlow;
@@ -907,8 +916,6 @@ function saveState() {
             accountsData,
             transactions,
             fixedExpenses,
-            fixedIncomes,
-            fixedFlowType,
             savedAt: new Date().toISOString()
         }));
         updateLastSync();
@@ -924,8 +931,6 @@ function loadState() {
             accountsData = parsed.accountsData;
             transactions = parsed.transactions;
             if (Array.isArray(parsed.fixedExpenses)) fixedExpenses = parsed.fixedExpenses;
-            if (Array.isArray(parsed.fixedIncomes)) fixedIncomes = parsed.fixedIncomes;
-            if (parsed.fixedFlowType === 'expense' || parsed.fixedFlowType === 'income') fixedFlowType = parsed.fixedFlowType;
             return true;
         }
     } catch (e) { console.warn('No se pudo leer localStorage:', e); }
@@ -975,9 +980,6 @@ document.addEventListener('DOMContentLoaded', () => {
     recalculateCoreEngine();
     calculateCompoundInterest();
     updateLastSync();
-
-    // Restaurar el toggle de flujo fijo
-    switchFixedFlowType(fixedFlowType);
 });
 
 // === Navegación ===
@@ -1780,11 +1782,10 @@ function initCharts() {
 function exportDataToJSON() {
     const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify({
         exportTime: new Date().toISOString(),
-        version: 'capital_v3',
+        version: 'capital_v2',
         cuentas: accountsData,
         historialMovimientos: transactions,
-        gastosFijos: fixedExpenses,
-        ingresosFijos: fixedIncomes
+        gastosFijos: fixedExpenses
     }, null, 2));
     const anchor = document.createElement('a');
     anchor.setAttribute("href", dataStr);
@@ -1811,9 +1812,6 @@ function importDataFromJSON(event) {
             if (Array.isArray(parsed.fixedExpenses || parsed.gastosFijos)) {
                 fixedExpenses = parsed.fixedExpenses || parsed.gastosFijos;
             }
-            if (Array.isArray(parsed.fixedIncomes || parsed.ingresosFijos)) {
-                fixedIncomes = parsed.fixedIncomes || parsed.ingresosFijos;
-            }
             syncSelectorsAndUIs();
             recalculateCoreEngine();
             renderFixedView();
@@ -1827,172 +1825,11 @@ function importDataFromJSON(event) {
 }
 
 // ============================================================
-//  FLUJOS FIJOS — Seguimiento de gastos e ingresos recurrentes
+//  GASTOS FIJOS — Seguimiento de pagos recurrentes
 // ============================================================
 
 const MONTH_NAMES = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
 const MONTH_SHORT = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
-
-// Configuración semántica que cambia según tipo (gasto/ingreso)
-const FLOW_CFG = {
-    expense: {
-        title: 'Gastos fijos',
-        subtitle: 'Controla pagos recurrentes y márcalos al cancelarlos',
-        emptyTitle: 'Sin gastos fijos registrados',
-        emptySubtitle: 'Añade tu primer pago recurrente para empezar el seguimiento',
-        addButton: 'Añadir gasto fijo',
-        modalNewTitle: 'Nuevo gasto fijo',
-        modalEditTitle: 'Editar gasto fijo',
-        paymentModalTitle: 'Confirmar pago',
-        kpiCompleted: 'Pagado',
-        kpiPending: 'Pendiente',
-        kpiAlert: 'Vencidos',
-        progressTitle: 'Progreso del mes',
-        progressUnit: 'pagados',
-        actionLabel: 'Marcar pagado',
-        actionVerb: 'pagado',
-        dueDayLabel: 'Día de vencimiento',
-        accountLabel: 'Cuenta de pago por defecto',
-        paymentAmountLabel: 'Monto real pagado',
-        paymentAccountLabel: 'Cuenta de origen',
-        paymentDateLabel: 'Fecha del pago',
-        paymentInfoText: 'Al confirmar se creará automáticamente la transacción en tu bitácora y se descontará el saldo de la cuenta.',
-        statusDone: { label: 'Pagado', color: 'var(--accent-sage)', bg: 'var(--accent-sage-soft)', border: '#84cc8e' },
-        statusOverdue: { label: 'Vencido', color: 'var(--accent-coral)', bg: 'var(--accent-coral-soft)', border: '#e5826b' },
-        statusMissed: { label: 'Impago', color: 'var(--accent-coral)', bg: 'var(--accent-coral-soft)', border: '#e5826b' },
-        statusSoon: { label: 'Próximo', color: 'var(--accent-gold)', bg: 'var(--accent-gold-soft)', border: '#c9a875' },
-        statusPending: { label: 'Pendiente', color: 'var(--text-secondary)', bg: 'rgba(255,255,255,0.04)', border: 'rgba(255,255,255,0.10)' },
-        statusScheduled: { label: 'Programado', color: 'var(--text-tertiary)', bg: 'rgba(255,255,255,0.04)', border: 'rgba(255,255,255,0.10)' },
-        missedDesc: 'Mes ya cerrado sin registro de pago',
-        overdueDesc: 'Venció',
-        dueLabel: 'Vence',
-        defaultColor: '#c9a875',
-        categories: [
-            { v: 'Arriendo', label: '🔑 Arriendo' },
-            { v: 'Dividendo', label: '🏠 Dividendo' },
-            { v: 'Servicios', label: '💡 Servicios / Cuentas' },
-            { v: 'Membresías', label: '💎 Membresías' },
-            { v: 'Vehículo', label: '🚗 Vehículo' },
-            { v: 'Educación', label: '📚 Educación' },
-            { v: 'Salud', label: '⚕️ Salud' },
-            { v: 'Transporte', label: '🚌 Transporte' },
-            { v: 'Otro', label: '📦 Otro' }
-        ],
-        icons: [
-            { v: 'fa-key', label: '🔑 Llave' },
-            { v: 'fa-house', label: '🏠 Casa' },
-            { v: 'fa-bolt', label: '⚡ Luz' },
-            { v: 'fa-droplet', label: '💧 Agua' },
-            { v: 'fa-fire', label: '🔥 Gas' },
-            { v: 'fa-wifi', label: '📶 Internet' },
-            { v: 'fa-mobile-screen', label: '📱 Celular' },
-            { v: 'fa-tv', label: '📺 Streaming' },
-            { v: 'fa-dumbbell', label: '🏋️ Gimnasio' },
-            { v: 'fa-car', label: '🚗 Auto' },
-            { v: 'fa-graduation-cap', label: '🎓 Educación' },
-            { v: 'fa-heart-pulse', label: '💗 Salud' },
-            { v: 'fa-shield-halved', label: '🛡️ Seguro' },
-            { v: 'fa-credit-card', label: '💳 Tarjeta' },
-            { v: 'fa-receipt', label: '🧾 Otro' }
-        ]
-    },
-    income: {
-        title: 'Ingresos fijos',
-        subtitle: 'Controla ingresos recurrentes y márcalos al recibirlos',
-        emptyTitle: 'Sin ingresos fijos registrados',
-        emptySubtitle: 'Añade tu primer ingreso recurrente para empezar el seguimiento',
-        addButton: 'Añadir ingreso fijo',
-        modalNewTitle: 'Nuevo ingreso fijo',
-        modalEditTitle: 'Editar ingreso fijo',
-        paymentModalTitle: 'Confirmar recepción',
-        kpiCompleted: 'Recibido',
-        kpiPending: 'Pendiente',
-        kpiAlert: 'Atrasados',
-        progressTitle: 'Progreso del mes',
-        progressUnit: 'recibidos',
-        actionLabel: 'Marcar recibido',
-        actionVerb: 'recibido',
-        dueDayLabel: 'Día esperado',
-        accountLabel: 'Cuenta de depósito por defecto',
-        paymentAmountLabel: 'Monto real recibido',
-        paymentAccountLabel: 'Cuenta de destino',
-        paymentDateLabel: 'Fecha de recepción',
-        paymentInfoText: 'Al confirmar se creará automáticamente el ingreso en tu bitácora y se sumará al saldo de la cuenta.',
-        statusDone: { label: 'Recibido', color: 'var(--accent-sage)', bg: 'var(--accent-sage-soft)', border: '#84cc8e' },
-        statusOverdue: { label: 'Atrasado', color: 'var(--accent-coral)', bg: 'var(--accent-coral-soft)', border: '#e5826b' },
-        statusMissed: { label: 'No recibido', color: 'var(--accent-coral)', bg: 'var(--accent-coral-soft)', border: '#e5826b' },
-        statusSoon: { label: 'Próximo', color: 'var(--accent-gold)', bg: 'var(--accent-gold-soft)', border: '#c9a875' },
-        statusPending: { label: 'Esperado', color: 'var(--text-secondary)', bg: 'rgba(255,255,255,0.04)', border: 'rgba(255,255,255,0.10)' },
-        statusScheduled: { label: 'Programado', color: 'var(--text-tertiary)', bg: 'rgba(255,255,255,0.04)', border: 'rgba(255,255,255,0.10)' },
-        missedDesc: 'Mes cerrado sin recepción registrada',
-        overdueDesc: 'Atrasado',
-        dueLabel: 'Esperado',
-        defaultColor: '#84cc8e',
-        categories: [
-            { v: 'Sueldo / Retornos', label: '💰 Sueldo / Retornos' },
-            { v: 'Arriendo', label: '🏠 Arriendo recibido' },
-            { v: 'Dividendo', label: '📈 Dividendo' },
-            { v: 'Devolución Sii', label: '💸 Devolución SII' },
-            { v: 'Otro', label: '📦 Otro ingreso' }
-        ],
-        icons: [
-            { v: 'fa-briefcase', label: '💼 Trabajo / Sueldo' },
-            { v: 'fa-sack-dollar', label: '💰 Pago' },
-            { v: 'fa-house', label: '🏠 Arriendo' },
-            { v: 'fa-chart-line', label: '📈 Dividendo' },
-            { v: 'fa-piggy-bank', label: '🐷 Ahorro' },
-            { v: 'fa-gift', label: '🎁 Bonificación' },
-            { v: 'fa-hand-holding-dollar', label: '🤝 Honorarios' },
-            { v: 'fa-money-bill-trend-up', label: '📊 Retorno inversión' },
-            { v: 'fa-receipt', label: '🧾 Otro' }
-        ]
-    }
-};
-
-function getActiveFlowList() {
-    return fixedFlowType === 'income' ? fixedIncomes : fixedExpenses;
-}
-
-function getActiveFlowCfg() {
-    return FLOW_CFG[fixedFlowType];
-}
-
-function findFixedById(id) {
-    return fixedExpenses.find(f => f.id == id) || fixedIncomes.find(f => f.id == id);
-}
-
-function getListOfFixedById(id) {
-    if (fixedExpenses.some(f => f.id == id)) return fixedExpenses;
-    if (fixedIncomes.some(f => f.id == id)) return fixedIncomes;
-    return null;
-}
-
-function isIncomeFixed(id) {
-    return fixedIncomes.some(f => f.id == id);
-}
-
-function switchFixedFlowType(type) {
-    if (type !== 'expense' && type !== 'income') return;
-    fixedFlowType = type;
-
-    // Estilos del toggle
-    const expBtn = document.getElementById('flow-toggle-expense');
-    const incBtn = document.getElementById('flow-toggle-income');
-    if (type === 'expense') {
-        expBtn.style.background = 'var(--bg-elevated)';
-        expBtn.style.color = 'var(--text-primary)';
-        incBtn.style.background = 'transparent';
-        incBtn.style.color = 'var(--text-tertiary)';
-    } else {
-        incBtn.style.background = 'var(--bg-elevated)';
-        incBtn.style.color = 'var(--text-primary)';
-        expBtn.style.background = 'transparent';
-        expBtn.style.color = 'var(--text-tertiary)';
-    }
-
-    saveState();
-    renderFixedView();
-}
 
 function getCurrentMonthKey() {
     const d = new Date();
@@ -2013,74 +1850,54 @@ function goToCurrentMonth() {
 }
 
 function getFixedStatus(fx) {
-    const cfg = getActiveFlowCfg();
     const payment = fx.payments && fx.payments[fixedMonthCursor];
-    const isDone = payment && payment.paid;
+    const isPaid = payment && payment.paid;
     const currentMonth = getCurrentMonthKey();
 
-    if (isDone) return { type: 'done', ...cfg.statusDone };
-    if (fixedMonthCursor < currentMonth) return { type: 'missed', ...cfg.statusMissed };
-    if (fixedMonthCursor > currentMonth) return { type: 'scheduled', ...cfg.statusScheduled };
-
+    if (isPaid) {
+        return { type: 'paid', label: 'Pagado', color: 'var(--accent-sage)', bg: 'var(--accent-sage-soft)', border: '#84cc8e' };
+    }
+    if (fixedMonthCursor < currentMonth) {
+        return { type: 'missed', label: 'Impago', color: 'var(--accent-coral)', bg: 'var(--accent-coral-soft)', border: '#e5826b' };
+    }
+    if (fixedMonthCursor > currentMonth) {
+        return { type: 'scheduled', label: 'Programado', color: 'var(--text-tertiary)', bg: 'rgba(255,255,255,0.04)', border: 'rgba(255,255,255,0.10)' };
+    }
     // mes actual
     const today = new Date().getDate();
-    if (today > fx.dueDay) return { type: 'overdue', ...cfg.statusOverdue };
+    if (today > fx.dueDay) {
+        return { type: 'overdue', label: 'Vencido', color: 'var(--accent-coral)', bg: 'var(--accent-coral-soft)', border: '#e5826b' };
+    }
     const daysLeft = fx.dueDay - today;
-    if (daysLeft <= 5) return { type: 'soon', ...cfg.statusSoon };
-    return { type: 'pending', ...cfg.statusPending };
+    if (daysLeft <= 5) {
+        return { type: 'soon', label: 'Próximo', color: 'var(--accent-gold)', bg: 'var(--accent-gold-soft)', border: '#c9a875' };
+    }
+    return { type: 'pending', label: 'Pendiente', color: 'var(--text-secondary)', bg: 'rgba(255,255,255,0.04)', border: 'rgba(255,255,255,0.10)' };
 }
 
 function getStatusSubLabel(fx, status) {
-    const cfg = getActiveFlowCfg();
     const payment = fx.payments && fx.payments[fixedMonthCursor];
-
-    if (status.type === 'done' && payment.paidDate) {
-        const d = new Date(payment.paidDate + 'T00:00:00');
-        const verb = fixedFlowType === 'income' ? 'Recibido' : 'Pagado';
-        return `${verb} el ${d.getDate()} de ${MONTH_SHORT[d.getMonth()]}`;
+    if (status.type === 'paid' && payment.paidDate) {
+        const d = new Date(payment.paidDate);
+        return `Pagado el ${d.getDate()} de ${MONTH_SHORT[d.getMonth()]}`;
     }
-    if (status.type === 'missed') return cfg.missedDesc;
-    if (status.type === 'scheduled') return `${cfg.dueLabel} el día ${fx.dueDay}`;
+    if (status.type === 'missed') return 'Mes ya cerrado sin registro de pago';
+    if (status.type === 'scheduled') return `Vence el día ${fx.dueDay}`;
     if (status.type === 'overdue') {
         const today = new Date().getDate();
         const diff = today - fx.dueDay;
-        if (fixedFlowType === 'income') {
-            return diff === 1 ? 'Atrasado 1 día' : `Atrasado ${diff} días`;
-        }
         return diff === 1 ? 'Venció ayer' : `Venció hace ${diff} días`;
     }
     if (status.type === 'soon') {
         const daysLeft = fx.dueDay - new Date().getDate();
-        const verb = fixedFlowType === 'income' ? 'Llega' : 'Vence';
-        if (daysLeft === 0) return `${verb} hoy`;
-        if (daysLeft === 1) return `${verb} mañana`;
-        return `${verb} en ${daysLeft} días`;
+        return daysLeft === 0 ? 'Vence hoy' : daysLeft === 1 ? 'Vence mañana' : `Vence en ${daysLeft} días`;
     }
-    return `${cfg.dueLabel} el día ${fx.dueDay}`;
-}
-
-function applyFixedViewLabels() {
-    const cfg = getActiveFlowCfg();
-    document.getElementById('fixed-header-title').innerText = 'Flujos fijos';
-    document.getElementById('fixed-header-subtitle').innerText = cfg.subtitle;
-    document.getElementById('btn-add-fixed').innerHTML = `<i class="fa-solid fa-plus text-xs"></i> ${cfg.addButton}`;
-
-    document.getElementById('kpi-completed-label').innerText = cfg.kpiCompleted;
-    document.getElementById('kpi-pending-label').innerText = cfg.kpiPending;
-    document.getElementById('kpi-alert-label').innerText = cfg.kpiAlert;
-    document.getElementById('fixed-progress-title').innerText = cfg.progressTitle;
-
-    document.getElementById('fixed-empty-title').innerText = cfg.emptyTitle;
-    document.getElementById('fixed-empty-subtitle').innerText = cfg.emptySubtitle;
+    return `Vence el día ${fx.dueDay}`;
 }
 
 function renderFixedView() {
     if (!fixedMonthCursor) fixedMonthCursor = getCurrentMonthKey();
-    const cfg = getActiveFlowCfg();
-    const list = getActiveFlowList();
     const [y, m] = fixedMonthCursor.split('-').map(Number);
-
-    applyFixedViewLabels();
 
     // Etiqueta del mes
     document.getElementById('fixed-month-label').innerText = `${MONTH_NAMES[m - 1]} ${y}`;
@@ -2091,40 +1908,42 @@ function renderFixedView() {
     }
 
     // KPIs
-    let total = 0, completed = 0, pending = 0, alertCount = 0;
-    list.forEach(fx => {
+    let total = 0, paid = 0, pending = 0, overdueCount = 0;
+    fixedExpenses.forEach(fx => {
         total += fx.amount;
         const status = getFixedStatus(fx);
         const payment = fx.payments && fx.payments[fixedMonthCursor];
-        if (status.type === 'done') completed += (payment.actualAmount || fx.amount);
+        if (status.type === 'paid') paid += (payment.actualAmount || fx.amount);
         else pending += fx.amount;
-        if (status.type === 'overdue' || status.type === 'missed') alertCount++;
+        if (status.type === 'overdue' || status.type === 'missed') overdueCount++;
     });
 
     document.getElementById('fixed-total').innerText = formatCurrency(total);
-    document.getElementById('fixed-paid').innerText = formatCurrency(completed);
+    document.getElementById('fixed-paid').innerText = formatCurrency(paid);
     document.getElementById('fixed-pending').innerText = formatCurrency(pending);
-    document.getElementById('fixed-overdue').innerText = alertCount;
+    document.getElementById('fixed-overdue').innerText = overdueCount;
 
-    const doneCount = list.filter(fx => getFixedStatus(fx).type === 'done').length;
-    const totalCount = list.length;
-    const progressPct = totalCount > 0 ? (doneCount / totalCount) * 100 : 0;
-    document.getElementById('fixed-progress-label').innerText = `${doneCount} / ${totalCount} ${cfg.progressUnit}`;
+    // Progress bar
+    const paidCount = fixedExpenses.filter(fx => getFixedStatus(fx).type === 'paid').length;
+    const totalCount = fixedExpenses.length;
+    const progressPct = totalCount > 0 ? (paidCount / totalCount) * 100 : 0;
+    document.getElementById('fixed-progress-label').innerText = `${paidCount} / ${totalCount} pagados`;
     document.getElementById('fixed-progress-bar').style.width = progressPct + '%';
 
-    // Grid
+    // Grid de cards
     const grid = document.getElementById('fixed-expenses-grid');
     const emptyState = document.getElementById('fixed-empty-state');
 
-    if (list.length === 0) {
+    if (fixedExpenses.length === 0) {
         grid.innerHTML = '';
         emptyState.classList.remove('hidden');
         return;
     }
     emptyState.classList.add('hidden');
 
-    const order = { overdue: 0, soon: 1, pending: 2, scheduled: 3, missed: 4, done: 5 };
-    const sorted = [...list].sort((a, b) => {
+    // Ordenar: pendientes primero por urgencia, luego pagados
+    const order = { overdue: 0, soon: 1, pending: 2, scheduled: 3, missed: 4, paid: 5 };
+    const sorted = [...fixedExpenses].sort((a, b) => {
         const sa = getFixedStatus(a);
         const sb = getFixedStatus(b);
         if (order[sa.type] !== order[sb.type]) return order[sa.type] - order[sb.type];
@@ -2135,20 +1954,22 @@ function renderFixedView() {
         const status = getFixedStatus(fx);
         const subLabel = getStatusSubLabel(fx, status);
         const payment = fx.payments && fx.payments[fixedMonthCursor];
-        const isDone = status.type === 'done';
+        const isPaid = status.type === 'paid';
+        const isPastMonth = fixedMonthCursor < getCurrentMonthKey();
         const isFutureMonth = fixedMonthCursor > getCurrentMonthKey();
-        const sageBg = isDone ? 'background: linear-gradient(180deg, rgba(132, 204, 142, 0.06) 0%, var(--bg-elevated) 100%);' : '';
+
+        const cardBg = isPaid ? 'background: linear-gradient(180deg, rgba(132, 204, 142, 0.06) 0%, var(--bg-elevated) 100%);' : '';
 
         let actionRow;
-        if (isDone) {
-            const realAmount = payment.actualAmount || fx.amount;
-            const note = realAmount !== fx.amount
-                ? ` <span class="font-mono text-[10px]" style="color: var(--text-muted);">(${formatCurrency(realAmount)})</span>`
+        if (isPaid) {
+            const amountPaid = payment.actualAmount || fx.amount;
+            const amountNote = amountPaid !== fx.amount
+                ? ` <span class="font-mono text-[10px]" style="color: var(--text-muted);">(${formatCurrency(amountPaid)})</span>`
                 : '';
             actionRow = `
                 <div class="flex items-center justify-between pt-3" style="border-top: 1px solid var(--border-subtle);">
                     <span class="text-xs flex items-center gap-2" style="color: var(--accent-sage);">
-                        <i class="fa-solid fa-circle-check"></i> ${subLabel}${note}
+                        <i class="fa-solid fa-circle-check"></i> ${subLabel}${amountNote}
                     </span>
                     <button onclick="unmarkFixedPaid(${fx.id})" class="text-[11px] font-semibold cursor-pointer hover:underline" style="color: var(--text-tertiary);">
                         Deshacer
@@ -2167,14 +1988,14 @@ function renderFixedView() {
                 <div class="flex items-center justify-between pt-3" style="border-top: 1px solid var(--border-subtle);">
                     <span class="text-xs" style="color: var(--text-secondary);">${subLabel}</span>
                     <button onclick="openPaymentModal(${fx.id})" class="btn-primary px-4 py-1.5 rounded-lg text-xs cursor-pointer">
-                        <i class="fa-solid fa-check text-[10px] mr-1"></i> ${cfg.actionLabel}
+                        <i class="fa-solid fa-check text-[10px] mr-1"></i> Marcar pagado
                     </button>
                 </div>
             `;
         }
 
         return `
-            <div class="surface p-5 relative transition-all group" style="border-left: 3px solid ${status.border}; ${sageBg}">
+            <div class="surface p-5 relative transition-all group" style="border-left: 3px solid ${status.border}; ${cardBg}">
                 <div class="absolute top-3 right-3 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                     <button onclick="editFixedExpense(${fx.id})" class="w-7 h-7 rounded-lg flex items-center justify-center cursor-pointer" style="background: rgba(0,0,0,0.3);">
                         <i class="fa-solid fa-pen text-[10px]" style="color: var(--accent-gold);"></i>
@@ -2200,52 +2021,27 @@ function renderFixedView() {
     }).join('');
 }
 
-// Llena las categorías e íconos del modal de creación según el tipo activo
-function populateFixedFormOptions() {
-    const cfg = getActiveFlowCfg();
-    const catSel = document.getElementById('fixed-category');
-    const iconSel = document.getElementById('fixed-icon');
-    catSel.innerHTML = cfg.categories.map(c => `<option value="${c.v}">${c.label}</option>`).join('');
-    iconSel.innerHTML = cfg.icons.map(i => `<option value="${i.v}">${i.label}</option>`).join('');
-}
-
 function openFixedExpenseModal() {
-    const cfg = getActiveFlowCfg();
     document.getElementById('fixed-form').reset();
     document.getElementById('edit-fixed-id').value = "";
-    document.getElementById('fixed-color').value = cfg.defaultColor;
-    document.getElementById('fixed-modal-title').innerText = cfg.modalNewTitle;
-    document.getElementById('lbl-fixed-due-day').innerText = cfg.dueDayLabel;
-    document.getElementById('lbl-fixed-account').innerText = cfg.accountLabel;
+    document.getElementById('fixed-color').value = '#c9a875';
+    document.getElementById('fixed-modal-title').innerText = "Nuevo gasto fijo";
     document.getElementById('btn-delete-fixed').classList.add('hidden');
-    populateFixedFormOptions();
     openModal('fixed-modal');
 }
 
 function editFixedExpense(id) {
-    const fx = findFixedById(id);
+    const fx = fixedExpenses.find(f => f.id == id);
     if (!fx) return;
-
-    // Si el tipo activo no coincide con el del item, cambiamos al tipo correcto
-    const isIncome = isIncomeFixed(id);
-    if ((isIncome && fixedFlowType !== 'income') || (!isIncome && fixedFlowType !== 'expense')) {
-        switchFixedFlowType(isIncome ? 'income' : 'expense');
-    }
-
-    const cfg = getActiveFlowCfg();
-    populateFixedFormOptions();
-
     document.getElementById('edit-fixed-id').value = fx.id;
     document.getElementById('fixed-name').value = fx.name;
     document.getElementById('fixed-amount').value = fx.amount;
     document.getElementById('fixed-due-day').value = fx.dueDay;
     document.getElementById('fixed-account').value = fx.accountId || '';
-    document.getElementById('fixed-category').value = fx.category || cfg.categories[0].v;
+    document.getElementById('fixed-category').value = fx.category || 'Otro';
     document.getElementById('fixed-color').value = fx.color;
     document.getElementById('fixed-icon').value = fx.icon;
-    document.getElementById('fixed-modal-title').innerText = cfg.modalEditTitle;
-    document.getElementById('lbl-fixed-due-day').innerText = cfg.dueDayLabel;
-    document.getElementById('lbl-fixed-account').innerText = cfg.accountLabel;
+    document.getElementById('fixed-modal-title').innerText = "Editar gasto fijo";
     document.getElementById('btn-delete-fixed').classList.remove('hidden');
     openModal('fixed-modal');
 }
@@ -2264,13 +2060,12 @@ function handleFixedSubmit(e) {
     };
 
     if (idEdit) {
-        const fx = findFixedById(idEdit);
+        const fx = fixedExpenses.find(f => f.id == idEdit);
         if (fx) Object.assign(fx, data);
-        showToast(fixedFlowType === 'income' ? 'Ingreso fijo actualizado' : 'Gasto fijo actualizado');
+        showToast('Gasto fijo actualizado');
     } else {
-        const target = getActiveFlowList();
-        target.push({ id: Date.now(), ...data, payments: {} });
-        showToast(fixedFlowType === 'income' ? 'Ingreso fijo creado' : 'Gasto fijo creado');
+        fixedExpenses.push({ id: Date.now(), ...data, payments: {} });
+        showToast('Gasto fijo creado');
     }
     closeModal('fixed-modal');
     saveState();
@@ -2280,46 +2075,30 @@ function handleFixedSubmit(e) {
 function deleteFixedExpense() {
     const idEdit = document.getElementById('edit-fixed-id').value;
     if (!idEdit) return;
-    const fx = findFixedById(idEdit);
+    const fx = fixedExpenses.find(f => f.id == idEdit);
     if (!fx) return;
-    if (!confirm(`¿Eliminar "${fx.name}"? Las transacciones ya creadas no serán afectadas.`)) return;
-
-    const isIncome = isIncomeFixed(idEdit);
-    if (isIncome) fixedIncomes = fixedIncomes.filter(f => f.id != idEdit);
-    else fixedExpenses = fixedExpenses.filter(f => f.id != idEdit);
-
+    if (!confirm(`¿Eliminar el gasto fijo "${fx.name}"? Las transacciones ya creadas no serán afectadas.`)) return;
+    fixedExpenses = fixedExpenses.filter(f => f.id != idEdit);
     closeModal('fixed-modal');
     saveState();
     renderFixedView();
-    showToast('Eliminado', 'trash', 'coral');
+    showToast('Gasto fijo eliminado', 'trash', 'coral');
 }
 
 function openPaymentModal(fixedId) {
-    const fx = findFixedById(fixedId);
+    const fx = fixedExpenses.find(f => f.id == fixedId);
     if (!fx) return;
-
-    // Asegurar que el modal corresponda al tipo del item
-    const isIncome = isIncomeFixed(fixedId);
-    if ((isIncome && fixedFlowType !== 'income') || (!isIncome && fixedFlowType !== 'expense')) {
-        switchFixedFlowType(isIncome ? 'income' : 'expense');
-    }
-
-    const cfg = getActiveFlowCfg();
-
-    document.getElementById('payment-modal-title').innerText = cfg.paymentModalTitle;
-    document.getElementById('lbl-payment-amount').innerText = cfg.paymentAmountLabel;
-    document.getElementById('lbl-payment-account').innerText = cfg.paymentAccountLabel;
-    document.getElementById('lbl-payment-date').innerText = cfg.paymentDateLabel;
-    document.getElementById('payment-info-text').innerHTML = `<i class="fa-solid fa-info-circle mr-1"></i>${cfg.paymentInfoText}`;
 
     document.getElementById('payment-fixed-id').value = fx.id;
     document.getElementById('payment-modal-subtitle').innerText = `${fx.name} · ${MONTH_NAMES[parseInt(fixedMonthCursor.split('-')[1]) - 1]} ${fixedMonthCursor.split('-')[0]}`;
     document.getElementById('payment-amount').value = fx.amount;
 
+    // Cuenta sugerida
     if (fx.accountId && accountsData[fx.accountId]) {
         document.getElementById('payment-account').value = fx.accountId;
     }
 
+    // Fecha sugerida: hoy si estamos en el mes actual, día de vencimiento si es mes pasado
     const currentMonth = getCurrentMonthKey();
     if (fixedMonthCursor === currentMonth) {
         document.getElementById('payment-date').value = new Date().toISOString().split('T')[0];
@@ -2339,17 +2118,14 @@ function confirmFixedPayment(e) {
     const accountId = document.getElementById('payment-account').value;
     const date = document.getElementById('payment-date').value;
 
-    const fx = findFixedById(fixedId);
+    const fx = fixedExpenses.find(f => f.id == fixedId);
     if (!fx || !accountsData[accountId]) return;
 
-    const isIncome = isIncomeFixed(fixedId);
-    const txType = isIncome ? 'ingreso' : 'gasto';
-
-    // Crear transacción y actualizar saldo
+    // Crear transacción y descontar
     const txId = Date.now();
     transactions.unshift({
         id: txId,
-        type: txType,
+        type: 'gasto',
         origin: accountId,
         dest: null,
         amount: amount,
@@ -2357,10 +2133,9 @@ function confirmFixedPayment(e) {
         date: date,
         fixedExpenseId: fx.id
     });
+    accountsData[accountId].balance -= amount;
 
-    if (isIncome) accountsData[accountId].balance += amount;
-    else accountsData[accountId].balance -= amount;
-
+    // Marcar como pagado en el mes correspondiente
     if (!fx.payments) fx.payments = {};
     fx.payments[fixedMonthCursor] = {
         paid: true,
@@ -2374,25 +2149,20 @@ function confirmFixedPayment(e) {
     saveState();
     renderFixedView();
     recalculateCoreEngine();
-    showToast(`${fx.name} marcado como ${isIncome ? 'recibido' : 'pagado'}`);
+    showToast(`${fx.name} marcado como pagado`);
 }
 
 function unmarkFixedPaid(fixedId) {
-    const fx = findFixedById(fixedId);
+    const fx = fixedExpenses.find(f => f.id == fixedId);
     if (!fx || !fx.payments || !fx.payments[fixedMonthCursor]) return;
 
-    const isIncome = isIncomeFixed(fixedId);
-    const action = isIncome ? 'recepción' : 'pago';
-    if (!confirm(`¿Deshacer la ${action} de "${fx.name}"? Se eliminará la transacción asociada y se revertirá el saldo de la cuenta.`)) return;
+    if (!confirm(`¿Deshacer el pago de "${fx.name}"? Se eliminará la transacción asociada y se devolverá el monto a la cuenta de origen.`)) return;
 
     const payment = fx.payments[fixedMonthCursor];
     const txIndex = transactions.findIndex(t => t.id == payment.txId);
     if (txIndex !== -1) {
         const tx = transactions[txIndex];
-        if (accountsData[tx.origin]) {
-            if (tx.type === 'ingreso') accountsData[tx.origin].balance -= tx.amount;
-            else accountsData[tx.origin].balance += tx.amount;
-        }
+        if (accountsData[tx.origin]) accountsData[tx.origin].balance += tx.amount;
         transactions.splice(txIndex, 1);
     }
 
@@ -2401,20 +2171,7 @@ function unmarkFixedPaid(fixedId) {
     saveState();
     renderFixedView();
     recalculateCoreEngine();
-    showToast(isIncome ? 'Recepción revertida' : 'Pago revertido', 'rotate-left', 'coral');
-}
-
-// ============================================================
-//  PWA — Registro del Service Worker
-//  Importante: usar rutas RELATIVAS para que funcione en GitHub Pages
-//  bajo cualquier subdirectorio (tuusuario.github.io/repo/)
-// ============================================================
-if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./service-worker.js', { scope: './' })
-            .then(reg => console.log('[PWA] Service Worker registrado:', reg.scope))
-            .catch(err => console.error('[PWA] Error al registrar SW:', err));
-    });
+    showToast('Pago revertido', 'rotate-left', 'coral');
 }
 </script>
 
