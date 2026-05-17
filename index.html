@@ -225,10 +225,10 @@
 
             <div class="flex items-center gap-2 shrink-0">
                 <button onclick="exportDataToJSON()" title="Exportar respaldo" class="w-9 h-9 rounded-lg cursor-pointer flex items-center justify-center transition-colors" style="background: rgba(255,255,255,0.03); color: var(--text-secondary);">
-                    <i class="fa-solid fa-download text-xs"></i>
+                    <i class="fa-solid fa-file-export text-xs"></i>
                 </button>
                 <button onclick="document.getElementById('import-file').click()" title="Importar respaldo" class="w-9 h-9 rounded-lg cursor-pointer flex items-center justify-center transition-colors" style="background: rgba(255,255,255,0.03); color: var(--text-secondary);">
-                    <i class="fa-solid fa-upload text-xs"></i>
+                    <i class="fa-solid fa-file-import text-xs"></i>
                 </button>
                 <input type="file" id="import-file" accept=".json" onchange="importDataFromJSON(event)" class="hidden">
 
@@ -867,7 +867,7 @@
                         <div id="qr-visible-state" class="hidden">
                             <div class="flex flex-col md:flex-row items-center gap-6">
                                 <div class="bg-white p-4 rounded-2xl shrink-0">
-                                    <canvas id="qr-canvas"></canvas>
+                                    <canvas id="qr-canvas" width="240" height="240"></canvas>
                                 </div>
                                 <div class="flex-1 min-w-0 text-center md:text-left">
                                     <p class="text-sm mb-3" style="color: var(--text-secondary);">
@@ -878,9 +878,14 @@
                                         <li><strong style="color: var(--accent-gold);">2.</strong> Apunta al código y toca el enlace que aparece</li>
                                         <li><strong style="color: var(--accent-gold);">3.</strong> Se abrirá la app con todo precargado</li>
                                     </ol>
-                                    <button onclick="hideSyncQR()" class="btn-ghost px-4 py-2 rounded-lg text-xs font-semibold cursor-pointer">
-                                        <i class="fa-solid fa-eye-slash text-[10px] mr-1"></i> Ocultar QR
-                                    </button>
+                                    <div class="flex flex-col sm:flex-row gap-2">
+                                        <button onclick="copySyncLink()" id="btn-copy-sync-link" class="btn-primary px-4 py-2 rounded-lg text-xs cursor-pointer">
+                                            <i class="fa-solid fa-copy text-[10px] mr-1"></i> Copiar enlace
+                                        </button>
+                                        <button onclick="hideSyncQR()" class="btn-ghost px-4 py-2 rounded-lg text-xs font-semibold cursor-pointer">
+                                            <i class="fa-solid fa-eye-slash text-[10px] mr-1"></i> Ocultar
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -1122,10 +1127,26 @@
 
         <form id="payment-form" onsubmit="confirmFixedPayment(event)" class="space-y-4">
             <input type="hidden" id="payment-fixed-id">
-            <div>
-                <label id="lbl-payment-amount" class="field-label">Monto real pagado</label>
-                <input type="number" id="payment-amount" min="1" required>
+
+            <!-- Banner del monto de referencia -->
+            <div class="surface-soft p-3 flex items-center justify-between">
+                <div>
+                    <div class="text-[10px] uppercase tracking-widest" style="color: var(--text-tertiary);">Monto de referencia</div>
+                    <div id="payment-reference-amount" class="font-mono text-sm font-medium mt-0.5" style="color: var(--text-secondary);">—</div>
+                </div>
+                <i class="fa-solid fa-arrow-right text-xs" style="color: var(--text-muted);"></i>
+                <div class="text-right">
+                    <div class="text-[10px] uppercase tracking-widest" style="color: var(--accent-gold);">Diferencia</div>
+                    <div id="payment-difference" class="font-mono text-sm font-medium mt-0.5">—</div>
+                </div>
             </div>
+
+            <div>
+                <label id="lbl-payment-amount" class="field-label" style="color: var(--accent-gold);"><i class="fa-solid fa-pen text-[9px] mr-1"></i> Monto real pagado <span style="color: var(--text-muted); font-weight: 500; text-transform: none; letter-spacing: 0;">(editable)</span></label>
+                <input type="number" id="payment-amount" min="1" required oninput="updatePaymentDifference()" style="border-color: var(--accent-gold); font-size: 16px; font-weight: 600;">
+                <p class="text-[10px] mt-1.5" style="color: var(--text-muted);">Ajusta este monto al valor exacto que se pagó. La cuenta se descuenta por este monto, no por el de referencia.</p>
+            </div>
+
             <div>
                 <label id="lbl-payment-account" class="field-label">Cuenta de origen</label>
                 <select id="payment-account" required></select>
@@ -1546,10 +1567,11 @@ function saveState() {
             creditCards,
             exchangeRate,
             chartCompareSelections,
-            savedAt: new Date().toISOString()
+            savedAt: isApplyingRemote && window._remoteSavedAt ? window._remoteSavedAt : new Date().toISOString()
         }));
         updateLastSync();
-        if (typeof scheduleAutoSync === 'function') scheduleAutoSync();
+        // No disparar auto-sync si estamos aplicando datos remotos (evita loops)
+        if (!isApplyingRemote && typeof scheduleAutoSync === 'function') scheduleAutoSync();
     } catch (e) { console.warn('No se pudo guardar en localStorage:', e); }
 }
 
@@ -4256,6 +4278,7 @@ let syncConfig = {
 let syncState = 'idle'; // 'idle' | 'syncing' | 'error' | 'offline'
 let syncDebounceTimer = null;
 let syncLogEntries = [];
+let isApplyingRemote = false; // Flag para evitar loops de sync al aplicar datos remotos
 
 function loadSyncConfig() {
     try {
@@ -4391,6 +4414,10 @@ function applyPayload(payload) {
     if (!payload || !payload.accountsData || !payload.transactions) {
         throw new Error('Payload inválido o corrupto');
     }
+    // Marcar que estamos aplicando datos remotos para evitar loop de sync
+    isApplyingRemote = true;
+    window._remoteSavedAt = payload.savedAt || new Date().toISOString();
+
     accountsData = payload.accountsData;
     transactions = payload.transactions;
     if (Array.isArray(payload.fixedExpenses)) fixedExpenses = payload.fixedExpenses;
@@ -4405,6 +4432,10 @@ function applyPayload(payload) {
         chartCompareSelections = Object.assign(chartCompareSelections, payload.chartCompareSelections);
     }
     saveState();
+
+    // Limpiar la bandera tras guardar
+    isApplyingRemote = false;
+    window._remoteSavedAt = null;
 }
 
 async function syncConnect(event) {
@@ -4681,7 +4712,8 @@ function formatRelativeTime(iso) {
 
 function showSyncQR() {
     if (!isConnected()) return;
-    // Construir URL de auto-configuración con token y gistId en hash (no se envía al servidor)
+
+    // Construir URL de auto-configuración con token y gistId en hash
     const baseUrl = window.location.origin + window.location.pathname;
     const params = new URLSearchParams({
         token: syncConfig.token,
@@ -4689,21 +4721,79 @@ function showSyncQR() {
     });
     const fullUrl = `${baseUrl}#sync=${encodeURIComponent(params.toString())}`;
 
+    // Mostrar el bloque visible inmediatamente
+    document.getElementById('qr-hidden-state').classList.add('hidden');
+    document.getElementById('qr-visible-state').classList.remove('hidden');
+
+    // Verificar que la librería QRCode esté cargada
+    if (typeof QRCode === 'undefined') {
+        logSync('Librería QR no disponible. Usa el botón "Copiar enlace" como alternativa.', 'error');
+        showQRFallback(fullUrl);
+        return;
+    }
+
     const canvas = document.getElementById('qr-canvas');
+
+    // Limpiar canvas previo
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // Generar el QR
     QRCode.toCanvas(canvas, fullUrl, {
         width: 240,
         margin: 1,
         color: { dark: '#0a0b0d', light: '#ffffff' },
-        errorCorrectionLevel: 'M'
+        errorCorrectionLevel: 'L' // Nivel bajo permite URLs largas (M fallaba con tokens largos)
     }, err => {
         if (err) {
-            console.error(err);
-            showToast('Error al generar QR', 'triangle-exclamation', 'coral');
-            return;
+            console.error('Error al generar QR:', err);
+            showQRFallback(fullUrl);
         }
-        document.getElementById('qr-hidden-state').classList.add('hidden');
-        document.getElementById('qr-visible-state').classList.remove('hidden');
     });
+
+    // Guardar el enlace en un atributo para el botón de copiar
+    document.getElementById('btn-copy-sync-link').dataset.url = fullUrl;
+}
+
+function showQRFallback(url) {
+    const canvas = document.getElementById('qr-canvas');
+    const ctx = canvas.getContext('2d');
+    canvas.width = 240;
+    canvas.height = 240;
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, 240, 240);
+    ctx.fillStyle = '#0a0b0d';
+    ctx.font = '12px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('QR no disponible', 120, 110);
+    ctx.fillText('Usa "Copiar enlace"', 120, 130);
+    document.getElementById('btn-copy-sync-link').dataset.url = url;
+}
+
+async function copySyncLink() {
+    const btn = document.getElementById('btn-copy-sync-link');
+    const url = btn.dataset.url;
+    if (!url) return;
+    try {
+        await navigator.clipboard.writeText(url);
+        showToast('Enlace copiado al portapapeles');
+    } catch (e) {
+        // Fallback para navegadores sin clipboard API
+        const ta = document.createElement('textarea');
+        ta.value = url;
+        ta.style.position = 'fixed';
+        ta.style.opacity = '0';
+        document.body.appendChild(ta);
+        ta.select();
+        try {
+            document.execCommand('copy');
+            showToast('Enlace copiado');
+        } catch (err) {
+            showToast('No se pudo copiar. Cópialo manualmente.', 'triangle-exclamation', 'coral');
+            console.log('Sync link:', url);
+        }
+        document.body.removeChild(ta);
+    }
 }
 
 function hideSyncQR() {
