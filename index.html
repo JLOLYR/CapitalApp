@@ -225,10 +225,10 @@
 
             <div class="flex items-center gap-2 shrink-0">
                 <button onclick="exportDataToJSON()" title="Exportar respaldo" class="w-9 h-9 rounded-lg cursor-pointer flex items-center justify-center transition-colors" style="background: rgba(255,255,255,0.03); color: var(--text-secondary);">
-                    <i class="fa-solid fa-arrow-down-to-bracket text-xs"></i>
+                    <i class="fa-solid fa-download text-xs"></i>
                 </button>
                 <button onclick="document.getElementById('import-file').click()" title="Importar respaldo" class="w-9 h-9 rounded-lg cursor-pointer flex items-center justify-center transition-colors" style="background: rgba(255,255,255,0.03); color: var(--text-secondary);">
-                    <i class="fa-solid fa-arrow-up-from-bracket text-xs"></i>
+                    <i class="fa-solid fa-upload text-xs"></i>
                 </button>
                 <input type="file" id="import-file" accept=".json" onchange="importDataFromJSON(event)" class="hidden">
 
@@ -791,7 +791,7 @@
                         <div class="flex items-start justify-between gap-4 flex-wrap">
                             <div class="flex items-center gap-4">
                                 <div class="w-12 h-12 rounded-xl flex items-center justify-center" style="background: var(--accent-sage-soft); border: 1px solid var(--accent-sage);">
-                                    <i class="fa-solid fa-cloud-check text-lg" style="color: var(--accent-sage);"></i>
+                                    <i class="fa-solid fa-circle-check text-lg" style="color: var(--accent-sage);"></i>
                                 </div>
                                 <div>
                                     <div class="font-serif text-xl">Conectado a GitHub</div>
@@ -2706,13 +2706,13 @@ const FLOW_CFG = {
         ],
         icons: [
             { v: 'fa-briefcase', label: '💼 Trabajo / Sueldo' },
-            { v: 'fa-sack-dollar', label: '💰 Pago' },
+            { v: 'fa-money-bill-wave', label: '💰 Pago' },
             { v: 'fa-house', label: '🏠 Arriendo' },
             { v: 'fa-chart-line', label: '📈 Dividendo' },
             { v: 'fa-piggy-bank', label: '🐷 Ahorro' },
             { v: 'fa-gift', label: '🎁 Bonificación' },
-            { v: 'fa-hand-holding-dollar', label: '🤝 Honorarios' },
-            { v: 'fa-money-bill-trend-up', label: '📊 Retorno inversión' },
+            { v: 'fa-handshake', label: '🤝 Honorarios' },
+            { v: 'fa-arrow-trend-up', label: '📊 Retorno inversión' },
             { v: 'fa-receipt', label: '🧾 Otro' }
         ]
     }
