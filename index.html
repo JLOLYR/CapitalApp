@@ -249,6 +249,11 @@
                 <i class="fa-regular fa-chart-bar mr-3 w-4 text-center text-xs"></i>
                 <span>Proyección</span>
             </button>
+            <button onclick="switchTab('sync')" id="tab-sync" class="tab-item w-full px-3 py-2.5 flex items-center text-sm font-medium cursor-pointer">
+                <i class="fa-solid fa-cloud-arrow-up mr-3 w-4 text-center text-xs"></i>
+                <span>Sincronización</span>
+                <span id="sync-status-dot" class="ml-auto w-1.5 h-1.5 rounded-full" style="background: var(--text-muted);"></span>
+            </button>
 
             <div class="px-3 mt-6 mb-2 text-[10px] uppercase tracking-widest" style="color: var(--text-muted);">Datos</div>
 
@@ -652,6 +657,137 @@
                 </div>
             </div>
 
+            <!-- ====== VISTA: SINCRONIZACIÓN ====== -->
+            <div id="view-sync" class="hidden space-y-6">
+                <header>
+                    <div class="badge mb-2" style="color: var(--accent-gold);">— Sincronización entre dispositivos</div>
+                    <h1 class="font-serif text-4xl font-light tracking-tight">Sincronización</h1>
+                    <p class="text-sm mt-2" style="color: var(--text-tertiary);">Guarda tus datos en GitHub Gist y manténlos al día en todos tus dispositivos</p>
+                </header>
+
+                <!-- ESTADO ACTUAL (visible solo cuando hay token) -->
+                <div id="sync-connected-view" class="hidden space-y-6">
+                    <div class="surface p-6">
+                        <div class="flex items-start justify-between gap-4 flex-wrap">
+                            <div class="flex items-center gap-4">
+                                <div class="w-12 h-12 rounded-xl flex items-center justify-center" style="background: var(--accent-sage-soft); border: 1px solid var(--accent-sage);">
+                                    <i class="fa-solid fa-cloud-check text-lg" style="color: var(--accent-sage);"></i>
+                                </div>
+                                <div>
+                                    <div class="font-serif text-xl">Conectado a GitHub</div>
+                                    <div id="sync-user-info" class="text-xs mt-1" style="color: var(--text-tertiary);">—</div>
+                                </div>
+                            </div>
+                            <button onclick="syncDisconnect()" class="btn-ghost px-4 py-2 rounded-lg text-xs font-semibold cursor-pointer">
+                                <i class="fa-solid fa-link-slash text-[10px] mr-1"></i> Desconectar
+                            </button>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mt-6">
+                            <div class="surface-soft p-4">
+                                <div class="badge mb-1" style="color: var(--text-tertiary);">Última sincronización</div>
+                                <div id="sync-last-time" class="text-sm font-mono mt-1" style="color: var(--text-secondary);">—</div>
+                            </div>
+                            <div class="surface-soft p-4">
+                                <div class="badge mb-1" style="color: var(--text-tertiary);">Estado</div>
+                                <div id="sync-state-label" class="text-sm font-medium mt-1">—</div>
+                            </div>
+                            <div class="surface-soft p-4">
+                                <div class="badge mb-1" style="color: var(--text-tertiary);">Gist ID</div>
+                                <div id="sync-gist-id" class="text-[11px] font-mono mt-1 truncate" style="color: var(--text-secondary);">—</div>
+                            </div>
+                        </div>
+
+                        <div class="flex flex-col sm:flex-row gap-3 mt-6">
+                            <button onclick="syncNow()" id="btn-sync-now" class="btn-primary flex-1 py-2.5 rounded-xl text-sm cursor-pointer flex items-center justify-center gap-2">
+                                <i class="fa-solid fa-arrows-rotate text-xs"></i> Sincronizar ahora
+                            </button>
+                            <button onclick="syncPullFromRemote()" class="btn-ghost flex-1 py-2.5 rounded-xl text-sm font-semibold cursor-pointer flex items-center justify-center gap-2">
+                                <i class="fa-solid fa-cloud-arrow-down text-xs"></i> Descargar desde nube
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Opciones -->
+                    <div class="surface p-6">
+                        <h3 class="font-serif text-lg font-medium tracking-tight mb-4">Opciones</h3>
+                        <div class="space-y-4">
+                            <label class="flex items-start gap-3 cursor-pointer">
+                                <input type="checkbox" id="sync-auto-toggle" onchange="toggleAutoSync()" class="!w-4 !h-4 mt-1 cursor-pointer accent-amber-600">
+                                <div class="flex-1">
+                                    <div class="font-medium text-sm">Sincronización automática</div>
+                                    <div class="text-xs mt-0.5" style="color: var(--text-tertiary);">Sube los cambios a la nube 3 segundos después de cada modificación</div>
+                                </div>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Log de actividad -->
+                    <div class="surface p-6">
+                        <h3 class="font-serif text-lg font-medium tracking-tight mb-4">Actividad reciente</h3>
+                        <div id="sync-log" class="space-y-2 max-h-60 overflow-y-auto custom-scrollbar">
+                            <!-- JS -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- VISTA SIN CONEXIÓN (visible cuando no hay token) -->
+                <div id="sync-disconnected-view" class="space-y-6">
+                    <div class="surface p-6 lg:p-8">
+                        <h3 class="font-serif text-xl font-medium tracking-tight mb-2">Conectar con GitHub Gist</h3>
+                        <p class="text-sm mb-6" style="color: var(--text-tertiary);">
+                            Pega tu Personal Access Token de GitHub para empezar a sincronizar.
+                            Tus datos quedan en un Gist privado de tu cuenta — solo tú accedes a ellos.
+                        </p>
+
+                        <form onsubmit="syncConnect(event)" class="space-y-4">
+                            <div>
+                                <label class="field-label">Personal Access Token</label>
+                                <input type="password" id="sync-token-input" required placeholder="ghp_xxxxxxxxxxxxxxxxxxxx" autocomplete="off" spellcheck="false" style="font-family: 'JetBrains Mono', monospace; font-size: 13px;">
+                                <p class="text-[11px] mt-2" style="color: var(--text-muted);">
+                                    Se guarda en este dispositivo. Nadie más que tú lo verá.
+                                </p>
+                            </div>
+
+                            <div>
+                                <label class="field-label">Gist existente (opcional)</label>
+                                <input type="text" id="sync-gist-input" placeholder="Dejar vacío para crear uno nuevo" style="font-family: 'JetBrains Mono', monospace; font-size: 13px;">
+                                <p class="text-[11px] mt-2" style="color: var(--text-muted);">
+                                    Si ya configuraste sync en otro dispositivo, pega aquí el ID del Gist que aparece en esa app. Si es tu primer dispositivo, déjalo vacío y la app creará uno automáticamente.
+                                </p>
+                            </div>
+
+                            <button type="submit" id="btn-sync-connect" class="btn-primary w-full py-2.5 rounded-xl text-sm cursor-pointer">
+                                <i class="fa-solid fa-plug text-xs mr-1"></i> Conectar
+                            </button>
+                        </form>
+                    </div>
+
+                    <!-- Guía rápida -->
+                    <div class="surface p-6">
+                        <h3 class="font-serif text-lg font-medium tracking-tight mb-4">¿Cómo obtener tu token?</h3>
+                        <ol class="space-y-3 text-sm" style="color: var(--text-secondary);">
+                            <li class="flex gap-3">
+                                <span class="font-serif text-xl shrink-0" style="color: var(--accent-gold);">1.</span>
+                                <span>Entra a <a href="https://github.com/settings/tokens" target="_blank" rel="noopener" class="underline" style="color: var(--accent-gold);">github.com/settings/tokens</a> y haz click en <span class="font-mono text-xs px-1.5 py-0.5 rounded" style="background: var(--bg-base);">Generate new token (classic)</span></span>
+                            </li>
+                            <li class="flex gap-3">
+                                <span class="font-serif text-xl shrink-0" style="color: var(--accent-gold);">2.</span>
+                                <span>Ponle un nombre (ej. "Capital Sync"), elige expiración "No expiration", y marca <strong>SOLO la casilla</strong> <span class="font-mono text-xs px-1.5 py-0.5 rounded" style="background: var(--bg-base);">gist</span></span>
+                            </li>
+                            <li class="flex gap-3">
+                                <span class="font-serif text-xl shrink-0" style="color: var(--accent-gold);">3.</span>
+                                <span>Click en <span class="font-mono text-xs px-1.5 py-0.5 rounded" style="background: var(--bg-base);">Generate token</span> y copia el código que aparece (empieza con <span class="font-mono">ghp_</span>)</span>
+                            </li>
+                            <li class="flex gap-3">
+                                <span class="font-serif text-xl shrink-0" style="color: var(--accent-gold);">4.</span>
+                                <span>Pégalo arriba y haz click en Conectar. El primer dispositivo creará el Gist automáticamente.</span>
+                            </li>
+                        </ol>
+                    </div>
+                </div>
+            </div>
+
         </main>
     </div>
 </div>
@@ -912,6 +1048,8 @@ function saveState() {
             savedAt: new Date().toISOString()
         }));
         updateLastSync();
+        // Disparar sync automático con debounce (si está conectado)
+        if (typeof scheduleAutoSync === 'function') scheduleAutoSync();
     } catch (e) { console.warn('No se pudo guardar en localStorage:', e); }
 }
 
@@ -968,6 +1106,7 @@ function showToast(message, icon = 'check-circle', color = 'sage') {
 // === Inicialización ===
 document.addEventListener('DOMContentLoaded', () => {
     loadState();
+    loadSyncConfig();
     document.getElementById('tx-date').value = new Date().toISOString().split('T')[0];
     fixedMonthCursor = getCurrentMonthKey();
     initCharts();
@@ -978,11 +1117,22 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Restaurar el toggle de flujo fijo
     switchFixedFlowType(fixedFlowType);
+
+    // Si hay sincronización configurada, intentar pull inicial
+    if (isConnected()) {
+        setSyncState('syncing');
+        syncInitialPull().then(() => {
+            // Refrescar UI tras el pull
+            renderSyncView();
+        });
+    } else {
+        setSyncState('idle');
+    }
 });
 
 // === Navegación ===
 function switchTab(tabId) {
-    ['dashboard', 'estadisticas', 'fijos', 'cuentas', 'proyeccion'].forEach(t => {
+    ['dashboard', 'estadisticas', 'fijos', 'cuentas', 'proyeccion', 'sync'].forEach(t => {
         document.getElementById(`view-${t}`).classList.add('hidden');
         document.getElementById(`tab-${t}`).classList.remove('tab-active');
     });
@@ -991,6 +1141,7 @@ function switchTab(tabId) {
     view.classList.add('fade-in');
     document.getElementById(`tab-${tabId}`).classList.add('tab-active');
     if (tabId === 'fijos') renderFixedView();
+    if (tabId === 'sync') renderSyncView();
 }
 
 function openModal(id) { document.getElementById(id).classList.remove('hidden'); }
@@ -2403,6 +2554,443 @@ function unmarkFixedPaid(fixedId) {
     recalculateCoreEngine();
     showToast(isIncome ? 'Recepción revertida' : 'Pago revertido', 'rotate-left', 'coral');
 }
+
+// ============================================================
+//  SINCRONIZACIÓN — GitHub Gist como backend
+// ============================================================
+
+const SYNC_KEY = 'capital_sync_config';
+const GIST_FILE_NAME = 'capital_data.json';
+const GIST_DESCRIPTION = 'Capital - Datos de Finanzas Personales (App de uso personal)';
+const DEBOUNCE_MS = 3000;
+
+let syncConfig = {
+    token: null,
+    gistId: null,
+    autoSync: true,
+    lastSyncAt: null,
+    username: null
+};
+
+let syncState = 'idle'; // 'idle' | 'syncing' | 'error' | 'offline'
+let syncDebounceTimer = null;
+let syncLogEntries = [];
+
+function loadSyncConfig() {
+    try {
+        const raw = localStorage.getItem(SYNC_KEY);
+        if (!raw) return;
+        const parsed = JSON.parse(raw);
+        Object.assign(syncConfig, parsed);
+    } catch (e) { console.warn('Sin config de sync previa'); }
+}
+
+function saveSyncConfig() {
+    try {
+        localStorage.setItem(SYNC_KEY, JSON.stringify(syncConfig));
+    } catch (e) { console.warn('No se pudo guardar config de sync'); }
+}
+
+function logSync(message, type = 'info') {
+    const entry = { time: new Date().toISOString(), message, type };
+    syncLogEntries.unshift(entry);
+    if (syncLogEntries.length > 50) syncLogEntries.pop();
+    if (document.getElementById('view-sync') && !document.getElementById('view-sync').classList.contains('hidden')) {
+        renderSyncLog();
+    }
+}
+
+function setSyncState(state) {
+    syncState = state;
+    const dot = document.getElementById('sync-status-dot');
+    if (dot) {
+        const colors = {
+            idle: 'var(--text-muted)',
+            syncing: 'var(--accent-gold)',
+            error: 'var(--accent-coral)',
+            offline: 'var(--text-tertiary)',
+            ok: 'var(--accent-sage)'
+        };
+        dot.style.background = colors[state] || colors.idle;
+        if (state === 'syncing') {
+            dot.style.boxShadow = `0 0 8px ${colors.syncing}`;
+        } else if (state === 'ok') {
+            dot.style.boxShadow = `0 0 8px ${colors.ok}`;
+        } else {
+            dot.style.boxShadow = 'none';
+        }
+    }
+    const stateLabel = document.getElementById('sync-state-label');
+    if (stateLabel) {
+        const labels = {
+            idle: 'Listo',
+            syncing: 'Sincronizando…',
+            error: 'Error',
+            offline: 'Sin conexión',
+            ok: 'Al día'
+        };
+        stateLabel.innerText = labels[state] || '—';
+    }
+}
+
+function isConnected() {
+    return !!(syncConfig.token && syncConfig.gistId);
+}
+
+// ============================================================
+//  GitHub API helpers
+// ============================================================
+
+async function ghValidateToken(token) {
+    const res = await fetch('https://api.github.com/user', {
+        headers: { 'Authorization': `token ${token}`, 'Accept': 'application/vnd.github+json' }
+    });
+    if (!res.ok) throw new Error('Token inválido o sin permisos');
+    return res.json();
+}
+
+async function ghCreateGist(token, data) {
+    const res = await fetch('https://api.github.com/gists', {
+        method: 'POST',
+        headers: { 'Authorization': `token ${token}`, 'Accept': 'application/vnd.github+json', 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            description: GIST_DESCRIPTION,
+            public: false,
+            files: { [GIST_FILE_NAME]: { content: JSON.stringify(data, null, 2) } }
+        })
+    });
+    if (!res.ok) throw new Error('No se pudo crear el Gist');
+    return res.json();
+}
+
+async function ghReadGist(token, gistId) {
+    const res = await fetch(`https://api.github.com/gists/${gistId}`, {
+        headers: { 'Authorization': `token ${token}`, 'Accept': 'application/vnd.github+json' }
+    });
+    if (!res.ok) throw new Error(`No se pudo leer el Gist (HTTP ${res.status})`);
+    const gist = await res.json();
+    const file = gist.files[GIST_FILE_NAME];
+    if (!file) throw new Error(`El Gist no contiene el archivo ${GIST_FILE_NAME}`);
+    return { content: JSON.parse(file.content), updatedAt: gist.updated_at };
+}
+
+async function ghUpdateGist(token, gistId, data) {
+    const res = await fetch(`https://api.github.com/gists/${gistId}`, {
+        method: 'PATCH',
+        headers: { 'Authorization': `token ${token}`, 'Accept': 'application/vnd.github+json', 'Content-Type': 'application/json' },
+        body: JSON.stringify({ files: { [GIST_FILE_NAME]: { content: JSON.stringify(data, null, 2) } } })
+    });
+    if (!res.ok) throw new Error('No se pudo actualizar el Gist');
+    return res.json();
+}
+
+// ============================================================
+//  Operaciones de alto nivel
+// ============================================================
+
+function buildPayload() {
+    return {
+        schemaVersion: 'capital_v3',
+        savedAt: new Date().toISOString(),
+        accountsData,
+        transactions,
+        fixedExpenses,
+        fixedIncomes,
+        fixedFlowType
+    };
+}
+
+function applyPayload(payload) {
+    if (!payload || !payload.accountsData || !payload.transactions) {
+        throw new Error('Payload inválido o corrupto');
+    }
+    accountsData = payload.accountsData;
+    transactions = payload.transactions;
+    if (Array.isArray(payload.fixedExpenses)) fixedExpenses = payload.fixedExpenses;
+    if (Array.isArray(payload.fixedIncomes)) fixedIncomes = payload.fixedIncomes;
+    if (payload.fixedFlowType === 'expense' || payload.fixedFlowType === 'income') fixedFlowType = payload.fixedFlowType;
+    saveState();
+}
+
+async function syncConnect(event) {
+    event.preventDefault();
+    const token = document.getElementById('sync-token-input').value.trim();
+    const existingGistId = document.getElementById('sync-gist-input').value.trim();
+
+    const btn = document.getElementById('btn-sync-connect');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin text-xs mr-1"></i> Conectando…';
+
+    try {
+        // 1. Validar token
+        const user = await ghValidateToken(token);
+        logSync(`Token verificado para @${user.login}`, 'ok');
+
+        let gistId = existingGistId;
+
+        if (gistId) {
+            // 2a. Usar Gist existente: descargar datos
+            const { content } = await ghReadGist(token, gistId);
+            if (confirm('Se encontró un Gist con datos previos. ¿Quieres reemplazar los datos actuales de este dispositivo con los del Gist?\n\nSí = traer los datos de la nube (recomendado)\nNo = mantener los datos locales (se subirán al Gist al primer sync)')) {
+                applyPayload(content);
+                logSync('Datos descargados del Gist existente', 'ok');
+            } else {
+                logSync('Manteniendo datos locales (se subirán al primer sync)', 'info');
+            }
+        } else {
+            // 2b. Crear Gist nuevo con datos actuales
+            const newGist = await ghCreateGist(token, buildPayload());
+            gistId = newGist.id;
+            logSync(`Gist nuevo creado: ${gistId}`, 'ok');
+        }
+
+        // 3. Guardar configuración
+        syncConfig.token = token;
+        syncConfig.gistId = gistId;
+        syncConfig.username = user.login;
+        syncConfig.lastSyncAt = new Date().toISOString();
+        syncConfig.autoSync = true;
+        saveSyncConfig();
+
+        setSyncState('ok');
+        renderSyncView();
+        recalculateCoreEngine();
+        renderFixedView();
+        showToast('Sincronización conectada');
+    } catch (err) {
+        console.error(err);
+        logSync(`Error: ${err.message}`, 'error');
+        setSyncState('error');
+        showToast(err.message || 'Error al conectar', 'triangle-exclamation', 'coral');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fa-solid fa-plug text-xs mr-1"></i> Conectar';
+    }
+}
+
+function syncDisconnect() {
+    if (!confirm('¿Desconectar la sincronización?\n\nTus datos locales no se borrarán y el Gist en GitHub seguirá ahí. Solo se eliminarán las credenciales de este dispositivo.')) return;
+    syncConfig = { token: null, gistId: null, autoSync: true, lastSyncAt: null, username: null };
+    saveSyncConfig();
+    setSyncState('idle');
+    renderSyncView();
+    showToast('Sincronización desconectada', 'link-slash', 'coral');
+}
+
+async function syncPushToRemote(silent = false) {
+    if (!isConnected()) return;
+    setSyncState('syncing');
+    try {
+        await ghUpdateGist(syncConfig.token, syncConfig.gistId, buildPayload());
+        syncConfig.lastSyncAt = new Date().toISOString();
+        saveSyncConfig();
+        setSyncState('ok');
+        logSync('Datos subidos a la nube', 'ok');
+        renderSyncView();
+        if (!silent) showToast('Sincronizado');
+    } catch (err) {
+        console.error(err);
+        const offline = !navigator.onLine || /Failed to fetch|NetworkError/i.test(err.message);
+        setSyncState(offline ? 'offline' : 'error');
+        logSync(offline ? 'Sin conexión: cambios pendientes' : `Error al subir: ${err.message}`, 'error');
+        if (!silent) showToast(offline ? 'Sin conexión, se reintentará' : 'Error al sincronizar', 'triangle-exclamation', 'coral');
+    }
+}
+
+async function syncPullFromRemote() {
+    if (!isConnected()) return;
+    if (!confirm('Esto reemplazará los datos locales con la versión que está en la nube. ¿Continuar?')) return;
+    setSyncState('syncing');
+    try {
+        const { content } = await ghReadGist(syncConfig.token, syncConfig.gistId);
+        applyPayload(content);
+        syncConfig.lastSyncAt = new Date().toISOString();
+        saveSyncConfig();
+        setSyncState('ok');
+        logSync('Datos descargados desde la nube', 'ok');
+        syncSelectorsAndUIs();
+        recalculateCoreEngine();
+        renderFixedView();
+        renderSyncView();
+        showToast('Datos descargados');
+    } catch (err) {
+        console.error(err);
+        setSyncState('error');
+        logSync(`Error al descargar: ${err.message}`, 'error');
+        showToast('Error al descargar', 'triangle-exclamation', 'coral');
+    }
+}
+
+async function syncNow() {
+    if (!isConnected()) return;
+    // Estrategia: comparar timestamps. Si remoto es más nuevo, descargar. Si no, subir.
+    setSyncState('syncing');
+    try {
+        const { content } = await ghReadGist(syncConfig.token, syncConfig.gistId);
+        const remoteTime = content.savedAt ? new Date(content.savedAt).getTime() : 0;
+        const localRaw = localStorage.getItem(STORAGE_KEY);
+        const localTime = localRaw ? new Date(JSON.parse(localRaw).savedAt || 0).getTime() : 0;
+
+        if (remoteTime > localTime) {
+            // Remoto más nuevo: preguntar si descargar
+            if (confirm(`La nube tiene una versión más reciente (de ${new Date(content.savedAt).toLocaleString('es-CL')}).\n\n¿Descargarla? (Sí = traer cambios de otro dispositivo. No = subir esta versión y sobreescribir la nube)`)) {
+                applyPayload(content);
+                syncSelectorsAndUIs();
+                recalculateCoreEngine();
+                renderFixedView();
+                logSync('Cambios remotos aplicados', 'ok');
+            } else {
+                await ghUpdateGist(syncConfig.token, syncConfig.gistId, buildPayload());
+                logSync('Local subido (sobreescribió remoto)', 'ok');
+            }
+        } else {
+            // Local más nuevo o igual: subir
+            await ghUpdateGist(syncConfig.token, syncConfig.gistId, buildPayload());
+            logSync('Cambios locales subidos', 'ok');
+        }
+
+        syncConfig.lastSyncAt = new Date().toISOString();
+        saveSyncConfig();
+        setSyncState('ok');
+        renderSyncView();
+        showToast('Sincronizado');
+    } catch (err) {
+        console.error(err);
+        const offline = !navigator.onLine || /Failed to fetch|NetworkError/i.test(err.message);
+        setSyncState(offline ? 'offline' : 'error');
+        logSync(offline ? 'Sin conexión' : `Error: ${err.message}`, 'error');
+        showToast(offline ? 'Sin conexión' : 'Error al sincronizar', 'triangle-exclamation', 'coral');
+    }
+}
+
+// Sync con debounce: se llama después de cada cambio local
+function scheduleAutoSync() {
+    if (!isConnected() || !syncConfig.autoSync) return;
+    if (syncDebounceTimer) clearTimeout(syncDebounceTimer);
+    syncDebounceTimer = setTimeout(() => {
+        syncPushToRemote(true); // silent = true (sin toast)
+    }, DEBOUNCE_MS);
+}
+
+function toggleAutoSync() {
+    const checkbox = document.getElementById('sync-auto-toggle');
+    syncConfig.autoSync = checkbox.checked;
+    saveSyncConfig();
+    logSync(`Sync automático ${checkbox.checked ? 'activado' : 'desactivado'}`, 'info');
+    showToast(`Sync automático ${checkbox.checked ? 'activado' : 'desactivado'}`);
+}
+
+// Pull inicial al cargar la app (si está conectada)
+async function syncInitialPull() {
+    if (!isConnected()) return;
+    if (!navigator.onLine) {
+        setSyncState('offline');
+        logSync('App iniciada sin conexión', 'info');
+        return;
+    }
+    setSyncState('syncing');
+    try {
+        const { content } = await ghReadGist(syncConfig.token, syncConfig.gistId);
+        const remoteTime = content.savedAt ? new Date(content.savedAt).getTime() : 0;
+        const localRaw = localStorage.getItem(STORAGE_KEY);
+        const localTime = localRaw ? new Date(JSON.parse(localRaw).savedAt || 0).getTime() : 0;
+
+        if (remoteTime > localTime) {
+            applyPayload(content);
+            syncSelectorsAndUIs();
+            recalculateCoreEngine();
+            renderFixedView();
+            logSync('Datos actualizados desde la nube al iniciar', 'ok');
+        } else {
+            logSync('Datos locales ya están al día', 'info');
+        }
+        setSyncState('ok');
+    } catch (err) {
+        console.error(err);
+        const offline = !navigator.onLine || /Failed to fetch|NetworkError/i.test(err.message);
+        setSyncState(offline ? 'offline' : 'error');
+        logSync(offline ? 'Sin conexión al iniciar' : `Error al iniciar sync: ${err.message}`, 'error');
+    }
+}
+
+// ============================================================
+//  Render UI de sincronización
+// ============================================================
+
+function renderSyncView() {
+    const connectedEl = document.getElementById('sync-connected-view');
+    const disconnectedEl = document.getElementById('sync-disconnected-view');
+    if (!connectedEl || !disconnectedEl) return;
+
+    if (isConnected()) {
+        connectedEl.classList.remove('hidden');
+        disconnectedEl.classList.add('hidden');
+
+        document.getElementById('sync-user-info').innerText = `@${syncConfig.username || '—'}`;
+        document.getElementById('sync-gist-id').innerText = syncConfig.gistId || '—';
+        document.getElementById('sync-last-time').innerText = syncConfig.lastSyncAt
+            ? formatRelativeTime(syncConfig.lastSyncAt)
+            : 'Nunca';
+        document.getElementById('sync-auto-toggle').checked = syncConfig.autoSync;
+
+        renderSyncLog();
+    } else {
+        connectedEl.classList.add('hidden');
+        disconnectedEl.classList.remove('hidden');
+    }
+}
+
+function renderSyncLog() {
+    const container = document.getElementById('sync-log');
+    if (!container) return;
+    if (syncLogEntries.length === 0) {
+        container.innerHTML = '<p class="text-xs text-center py-4" style="color: var(--text-muted);">Sin actividad reciente</p>';
+        return;
+    }
+    container.innerHTML = syncLogEntries.map(entry => {
+        const colors = {
+            ok: 'var(--accent-sage)',
+            error: 'var(--accent-coral)',
+            info: 'var(--text-tertiary)'
+        };
+        const icons = {
+            ok: 'fa-circle-check',
+            error: 'fa-circle-exclamation',
+            info: 'fa-circle-info'
+        };
+        return `
+            <div class="flex items-start gap-2.5 text-xs py-1.5">
+                <i class="fa-solid ${icons[entry.type]} mt-0.5 shrink-0" style="color: ${colors[entry.type]};"></i>
+                <div class="flex-1 min-w-0">
+                    <span style="color: var(--text-secondary);">${entry.message}</span>
+                    <span class="ml-2 font-mono text-[10px]" style="color: var(--text-muted);">${formatRelativeTime(entry.time)}</span>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+function formatRelativeTime(iso) {
+    const date = new Date(iso);
+    const diff = (Date.now() - date.getTime()) / 1000;
+    if (diff < 5) return 'hace un momento';
+    if (diff < 60) return `hace ${Math.floor(diff)}s`;
+    if (diff < 3600) return `hace ${Math.floor(diff / 60)} min`;
+    if (diff < 86400) return `hace ${Math.floor(diff / 3600)} h`;
+    return date.toLocaleString('es-CL', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
+}
+
+// Listeners de red
+window.addEventListener('online', () => {
+    if (isConnected()) {
+        logSync('Conexión recuperada', 'info');
+        syncPushToRemote(true);
+    }
+});
+window.addEventListener('offline', () => {
+    setSyncState('offline');
+    logSync('Sin conexión', 'info');
+});
 
 // ============================================================
 //  PWA — Registro del Service Worker
