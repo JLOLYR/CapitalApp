@@ -22,6 +22,7 @@
 
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
     <style>
@@ -82,21 +83,19 @@
             color: var(--text-tertiary);
             transition: all 0.2s ease;
             position: relative;
-            border-radius: 10px;
+            border-radius: 0;
         }
-        .tab-item:hover { color: var(--text-primary); background: rgba(255,255,255,0.02); }
+        .tab-item:hover { color: var(--text-primary); }
         .tab-active {
             color: var(--text-primary) !important;
-            background: linear-gradient(90deg, rgba(201, 168, 117, 0.08), transparent 80%) !important;
         }
-        .tab-active::before {
+        .tab-active::after {
             content: '';
             position: absolute;
-            left: 0; top: 20%;
-            height: 60%;
-            width: 2px;
+            left: 12px; right: 12px; bottom: 0;
+            height: 2px;
             background: var(--accent-gold);
-            border-radius: 0 2px 2px 0;
+            border-radius: 2px 2px 0 0;
         }
 
         .btn-primary {
@@ -207,84 +206,95 @@
 
 <body class="min-h-screen antialiased">
 
-<div class="flex flex-col lg:flex-row min-h-screen">
+<div class="flex flex-col min-h-screen">
 
-    <!-- ============ SIDEBAR ============ -->
-    <aside class="w-full lg:w-64 lg:fixed lg:h-screen flex flex-col z-30 shrink-0 lg:border-r border-b lg:border-b-0" style="background: rgba(10, 11, 13, 0.85); backdrop-filter: blur(20px); border-color: var(--border-subtle);">
+    <!-- ============ TOPBAR ============ -->
+    <header class="sticky top-0 z-40" style="background: rgba(10, 11, 13, 0.92); backdrop-filter: blur(20px); border-bottom: 1px solid var(--border-subtle);">
 
-        <!-- Marca -->
-        <div class="p-6 flex items-center gap-3">
-            <div class="w-10 h-10 rounded-xl flex items-center justify-center font-serif text-xl font-bold" style="background: linear-gradient(135deg, var(--accent-gold), #a08458); color: #1c1410;">
-                C
+        <!-- Fila superior: marca + acciones -->
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex items-center justify-between gap-4">
+            <div class="flex items-center gap-3 min-w-0">
+                <div class="w-9 h-9 rounded-xl flex items-center justify-center font-serif text-lg font-bold shrink-0" style="background: linear-gradient(135deg, var(--accent-gold), #a08458); color: #1c1410;">
+                    C
+                </div>
+                <div class="min-w-0">
+                    <div class="font-serif text-base sm:text-lg font-semibold tracking-tight leading-none">Capital</div>
+                    <div class="text-[9px] uppercase tracking-widest mt-1 hidden sm:block" style="color: var(--text-tertiary);">Finanzas Personales</div>
+                </div>
             </div>
-            <div>
-                <div class="font-serif text-xl font-semibold tracking-tight">Capital</div>
-                <div class="text-[10px] uppercase tracking-widest" style="color: var(--text-tertiary);">Finanzas Personales</div>
+
+            <div class="flex items-center gap-2 shrink-0">
+                <button onclick="exportDataToJSON()" title="Exportar respaldo" class="w-9 h-9 rounded-lg cursor-pointer flex items-center justify-center transition-colors" style="background: rgba(255,255,255,0.03); color: var(--text-secondary);">
+                    <i class="fa-solid fa-arrow-down-to-bracket text-xs"></i>
+                </button>
+                <button onclick="document.getElementById('import-file').click()" title="Importar respaldo" class="w-9 h-9 rounded-lg cursor-pointer flex items-center justify-center transition-colors" style="background: rgba(255,255,255,0.03); color: var(--text-secondary);">
+                    <i class="fa-solid fa-arrow-up-from-bracket text-xs"></i>
+                </button>
+                <input type="file" id="import-file" accept=".json" onchange="importDataFromJSON(event)" class="hidden">
+
+                <div class="flex items-center gap-1.5 ml-1 pl-2.5 border-l" style="border-color: var(--border-subtle);">
+                    <span id="sync-status-dot" class="w-1.5 h-1.5 rounded-full" style="background: var(--text-muted);"></span>
+                    <span id="last-sync" class="text-[10px] font-mono hidden md:inline" style="color: var(--text-tertiary);">—</span>
+                </div>
             </div>
         </div>
 
-        <div class="divider mx-6"></div>
-
-        <!-- Navegación -->
-        <nav class="flex-1 px-4 py-5 space-y-1 overflow-y-auto custom-scrollbar">
-            <div class="px-3 mb-2 text-[10px] uppercase tracking-widest" style="color: var(--text-muted);">Vistas</div>
-
-            <button onclick="switchTab('dashboard')" id="tab-dashboard" class="tab-item tab-active w-full px-3 py-2.5 flex items-center text-sm font-medium cursor-pointer">
-                <i class="fa-regular fa-square mr-3 w-4 text-center text-xs"></i>
-                <span>Resumen</span>
-            </button>
-            <button onclick="switchTab('estadisticas')" id="tab-estadisticas" class="tab-item w-full px-3 py-2.5 flex items-center text-sm font-medium cursor-pointer">
-                <i class="fa-regular fa-rectangle-list mr-3 w-4 text-center text-xs"></i>
-                <span>Movimientos</span>
-            </button>
-            <button onclick="switchTab('fijos')" id="tab-fijos" class="tab-item w-full px-3 py-2.5 flex items-center text-sm font-medium cursor-pointer">
-                <i class="fa-regular fa-calendar-check mr-3 w-4 text-center text-xs"></i>
-                <span>Flujos fijos</span>
-            </button>
-            <button onclick="switchTab('cuentas')" id="tab-cuentas" class="tab-item w-full px-3 py-2.5 flex items-center text-sm font-medium cursor-pointer">
-                <i class="fa-regular fa-credit-card mr-3 w-4 text-center text-xs"></i>
-                <span>Cuentas</span>
-            </button>
-            <button onclick="switchTab('proyeccion')" id="tab-proyeccion" class="tab-item w-full px-3 py-2.5 flex items-center text-sm font-medium cursor-pointer">
-                <i class="fa-regular fa-chart-bar mr-3 w-4 text-center text-xs"></i>
-                <span>Proyección</span>
-            </button>
-            <button onclick="switchTab('sync')" id="tab-sync" class="tab-item w-full px-3 py-2.5 flex items-center text-sm font-medium cursor-pointer">
-                <i class="fa-solid fa-cloud-arrow-up mr-3 w-4 text-center text-xs"></i>
-                <span>Sincronización</span>
-                <span id="sync-status-dot" class="ml-auto w-1.5 h-1.5 rounded-full" style="background: var(--text-muted);"></span>
-            </button>
-
-            <div class="px-3 mt-6 mb-2 text-[10px] uppercase tracking-widest" style="color: var(--text-muted);">Datos</div>
-
-            <button onclick="exportDataToJSON()" class="tab-item w-full px-3 py-2.5 flex items-center text-sm font-medium cursor-pointer">
-                <i class="fa-solid fa-arrow-down-to-bracket mr-3 w-4 text-center text-xs"></i>
-                <span>Exportar respaldo</span>
-            </button>
-            <button onclick="document.getElementById('import-file').click()" class="tab-item w-full px-3 py-2.5 flex items-center text-sm font-medium cursor-pointer">
-                <i class="fa-solid fa-arrow-up-from-bracket mr-3 w-4 text-center text-xs"></i>
-                <span>Importar respaldo</span>
-            </button>
-            <input type="file" id="import-file" accept=".json" onchange="importDataFromJSON(event)" class="hidden">
+        <!-- Fila inferior: tabs horizontales scrollables -->
+        <nav class="max-w-7xl mx-auto px-2 sm:px-4 lg:px-6 overflow-x-auto custom-scrollbar" style="scrollbar-width: thin;">
+            <div class="flex items-center gap-1 min-w-max">
+                <button onclick="switchTab('dashboard')" id="tab-dashboard" class="tab-item tab-active px-3.5 py-3 flex items-center gap-2 text-sm font-medium cursor-pointer whitespace-nowrap">
+                    <i class="fa-regular fa-square text-xs"></i>
+                    <span>Resumen</span>
+                </button>
+                <button onclick="switchTab('estadisticas')" id="tab-estadisticas" class="tab-item px-3.5 py-3 flex items-center gap-2 text-sm font-medium cursor-pointer whitespace-nowrap">
+                    <i class="fa-regular fa-rectangle-list text-xs"></i>
+                    <span>Movimientos</span>
+                </button>
+                <button onclick="switchTab('fijos')" id="tab-fijos" class="tab-item px-3.5 py-3 flex items-center gap-2 text-sm font-medium cursor-pointer whitespace-nowrap">
+                    <i class="fa-regular fa-calendar-check text-xs"></i>
+                    <span>Flujos fijos</span>
+                </button>
+                <button onclick="switchTab('objetivos')" id="tab-objetivos" class="tab-item px-3.5 py-3 flex items-center gap-2 text-sm font-medium cursor-pointer whitespace-nowrap">
+                    <i class="fa-solid fa-bullseye text-xs"></i>
+                    <span>Objetivos</span>
+                </button>
+                <button onclick="switchTab('cuentas')" id="tab-cuentas" class="tab-item px-3.5 py-3 flex items-center gap-2 text-sm font-medium cursor-pointer whitespace-nowrap">
+                    <i class="fa-regular fa-credit-card text-xs"></i>
+                    <span>Cuentas</span>
+                </button>
+                <button onclick="switchTab('tarjetas')" id="tab-tarjetas" class="tab-item px-3.5 py-3 flex items-center gap-2 text-sm font-medium cursor-pointer whitespace-nowrap">
+                    <i class="fa-solid fa-credit-card text-xs"></i>
+                    <span>Tarjetas</span>
+                </button>
+                <button onclick="switchTab('proyeccion')" id="tab-proyeccion" class="tab-item px-3.5 py-3 flex items-center gap-2 text-sm font-medium cursor-pointer whitespace-nowrap">
+                    <i class="fa-regular fa-chart-bar text-xs"></i>
+                    <span>Proyección</span>
+                </button>
+                <button onclick="switchTab('sync')" id="tab-sync" class="tab-item px-3.5 py-3 flex items-center gap-2 text-sm font-medium cursor-pointer whitespace-nowrap">
+                    <i class="fa-solid fa-cloud-arrow-up text-xs"></i>
+                    <span>Sincronización</span>
+                </button>
+            </div>
         </nav>
-
-        <!-- Pie del sidebar -->
-        <div class="p-5 mx-2 mb-2 surface-soft">
-            <div class="flex items-center justify-between mb-1">
-                <span class="text-[10px] uppercase tracking-widest" style="color: var(--text-tertiary);">Última sincronía</span>
-                <span class="w-1.5 h-1.5 rounded-full" style="background: var(--accent-sage); box-shadow: 0 0 8px var(--accent-sage);"></span>
-            </div>
-            <div id="last-sync" class="text-xs font-mono" style="color: var(--text-secondary);">—</div>
-            <div class="text-[10px] mt-2" style="color: var(--text-muted);">Guardado automático en este dispositivo</div>
-        </div>
-    </aside>
+    </header>
 
     <!-- ============ CONTENIDO PRINCIPAL ============ -->
-    <div class="flex-1 lg:ml-64 min-w-0 overflow-x-hidden">
+    <div class="flex-1 min-w-0 overflow-x-hidden">
         <main class="max-w-7xl w-full mx-auto px-5 sm:px-8 lg:px-10 py-8 lg:py-10">
 
             <!-- ====== VISTA 1: RESUMEN ====== -->
             <div id="view-dashboard" class="space-y-8 fade-in">
+
+                <!-- Banda de saldos por cuenta -->
+                <section>
+                    <div class="flex items-center justify-between mb-3">
+                        <div class="text-[10px] uppercase tracking-widest" style="color: var(--text-tertiary);">— Tus cuentas</div>
+                        <div class="text-[10px] uppercase tracking-widest hidden sm:block" style="color: var(--text-muted);">Toca para filtrar</div>
+                    </div>
+                    <div id="accounts-strip" class="flex gap-3 overflow-x-auto custom-scrollbar pb-2 -mx-2 px-2" style="scrollbar-width: thin;">
+                        <!-- JS render -->
+                    </div>
+                </section>
 
                 <!-- Encabezado editorial -->
                 <header class="flex flex-col md:flex-row md:items-end justify-between gap-6">
@@ -346,12 +356,24 @@
 
                 <!-- Gráfico principal -->
                 <section class="surface p-6 lg:p-8">
-                    <div class="flex flex-wrap justify-between items-start mb-6 gap-3">
+                    <div class="flex flex-wrap justify-between items-start mb-4 gap-3">
                         <div>
                             <h3 class="font-serif text-xl font-medium tracking-tight">Evolución del saldo</h3>
                             <p class="text-xs mt-1" style="color: var(--text-tertiary);">Trayectoria temporal del patrimonio</p>
                         </div>
-                        <span class="badge px-3 py-1.5 rounded-md" style="background: var(--accent-gold-soft); color: var(--accent-gold);">Precisión real</span>
+                        <button onclick="toggleChartCompareDropdown('line')" id="line-compare-trigger" class="btn-ghost px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer flex items-center gap-2">
+                            <i class="fa-solid fa-layer-group text-[10px]"></i>
+                            <span id="line-compare-label">Comparar cuentas</span>
+                            <i class="fa-solid fa-chevron-down text-[9px]"></i>
+                        </button>
+                    </div>
+                    <div id="line-compare-dropdown" class="hidden surface-soft p-4 mb-4">
+                        <div class="text-[10px] uppercase tracking-widest mb-3" style="color: var(--text-tertiary);">Selecciona las cuentas a comparar</div>
+                        <div id="line-compare-options" class="grid grid-cols-2 md:grid-cols-3 gap-2"></div>
+                        <div class="flex justify-between items-center mt-3 pt-3" style="border-top: 1px solid var(--border-subtle);">
+                            <button onclick="resetChartCompare('line')" class="text-[11px] cursor-pointer underline" style="color: var(--text-tertiary);">Limpiar selección</button>
+                            <button onclick="toggleChartCompareDropdown('line')" class="text-[11px] font-semibold cursor-pointer" style="color: var(--accent-gold);">Listo</button>
+                        </div>
                     </div>
                     <div class="h-72 relative"><canvas id="chartLine"></canvas></div>
                 </section>
@@ -398,10 +420,23 @@
 
                 <!-- Saldos por cuenta -->
                 <section class="surface p-6 lg:p-8">
-                    <div class="flex justify-between items-start mb-6">
+                    <div class="flex flex-wrap justify-between items-start mb-4 gap-3">
                         <div>
                             <h3 class="font-serif text-xl font-medium tracking-tight">Posición por cuenta</h3>
                             <p class="text-xs mt-1" style="color: var(--text-tertiary);">Distribución actual del patrimonio</p>
+                        </div>
+                        <button onclick="toggleChartCompareDropdown('balances')" id="balances-compare-trigger" class="btn-ghost px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer flex items-center gap-2">
+                            <i class="fa-solid fa-filter text-[10px]"></i>
+                            <span id="balances-compare-label">Filtrar cuentas</span>
+                            <i class="fa-solid fa-chevron-down text-[9px]"></i>
+                        </button>
+                    </div>
+                    <div id="balances-compare-dropdown" class="hidden surface-soft p-4 mb-4">
+                        <div class="text-[10px] uppercase tracking-widest mb-3" style="color: var(--text-tertiary);">Selecciona qué cuentas mostrar</div>
+                        <div id="balances-compare-options" class="grid grid-cols-2 md:grid-cols-3 gap-2"></div>
+                        <div class="flex justify-between items-center mt-3 pt-3" style="border-top: 1px solid var(--border-subtle);">
+                            <button onclick="resetChartCompare('balances')" class="text-[11px] cursor-pointer underline" style="color: var(--text-tertiary);">Mostrar todas</button>
+                            <button onclick="toggleChartCompareDropdown('balances')" class="text-[11px] font-semibold cursor-pointer" style="color: var(--accent-gold);">Listo</button>
                         </div>
                     </div>
                     <div class="h-72 relative"><canvas id="chartAccountBalances"></canvas></div>
@@ -657,6 +692,91 @@
                 </div>
             </div>
 
+            <!-- ====== VISTA: OBJETIVOS Y PRESUPUESTOS ====== -->
+            <div id="view-objetivos" class="hidden space-y-6">
+                <header class="flex flex-col md:flex-row md:items-end justify-between gap-4">
+                    <div>
+                        <div class="badge mb-2" style="color: var(--accent-gold);">— Planificación financiera</div>
+                        <h1 class="font-serif text-4xl font-light tracking-tight">Objetivos y presupuestos</h1>
+                        <p class="text-sm mt-2" style="color: var(--text-tertiary);">Define metas de ahorro y controla gastos por proyecto</p>
+                    </div>
+                </header>
+
+                <!-- Toggle Objetivos / Presupuestos -->
+                <div class="flex justify-center">
+                    <div class="inline-flex p-1 rounded-xl gap-1" style="background: var(--bg-raised); border: 1px solid var(--border-subtle);">
+                        <button onclick="switchGoalsTab('goals')" id="goals-toggle-goals" class="px-5 py-2 text-xs font-semibold rounded-lg cursor-pointer transition-all flex items-center gap-2" style="background: var(--bg-elevated); color: var(--text-primary);">
+                            <i class="fa-solid fa-bullseye text-[10px]" style="color: var(--accent-sage);"></i> Objetivos de ahorro
+                        </button>
+                        <button onclick="switchGoalsTab('budgets')" id="goals-toggle-budgets" class="px-5 py-2 text-xs font-semibold rounded-lg cursor-pointer transition-all flex items-center gap-2" style="color: var(--text-tertiary);">
+                            <i class="fa-solid fa-coins text-[10px]" style="color: var(--accent-gold);"></i> Presupuestos
+                        </button>
+                    </div>
+                </div>
+
+                <!-- KPIs resumen -->
+                <div id="goals-summary" class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <!-- JS -->
+                </div>
+
+                <!-- Botón agregar -->
+                <div class="flex justify-end">
+                    <button onclick="openGoalModal()" id="btn-add-goal" class="btn-primary px-5 py-2.5 rounded-xl text-sm flex items-center justify-center gap-2 cursor-pointer">
+                        <i class="fa-solid fa-plus text-xs"></i> <span id="btn-add-goal-label">Nuevo objetivo</span>
+                    </button>
+                </div>
+
+                <!-- Grid de tarjetas -->
+                <div id="goals-grid" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <!-- JS -->
+                </div>
+
+                <div id="goals-empty-state" class="hidden surface p-10 text-center">
+                    <i class="fa-solid fa-bullseye text-3xl mb-3" style="color: var(--text-muted);"></i>
+                    <p id="goals-empty-title" class="font-serif text-lg" style="color: var(--text-secondary);">Sin objetivos registrados</p>
+                    <p id="goals-empty-subtitle" class="text-xs mt-1" style="color: var(--text-tertiary);">Crea tu primera meta de ahorro para empezar</p>
+                </div>
+            </div>
+
+            <!-- ====== VISTA: TARJETAS DE CRÉDITO ====== -->
+            <div id="view-tarjetas" class="hidden space-y-6">
+                <header class="flex flex-col md:flex-row md:items-end justify-between gap-4">
+                    <div>
+                        <div class="badge mb-2" style="color: var(--accent-gold);">— Crédito y endeudamiento</div>
+                        <h1 class="font-serif text-4xl font-light tracking-tight">Tarjetas de crédito</h1>
+                        <p class="text-sm mt-2" style="color: var(--text-tertiary);">Registra compras detalladas sin afectar tu patrimonio. El gasto consolidado lo registras tú al pagar.</p>
+                    </div>
+                    <button onclick="openCardModal()" class="btn-primary px-5 py-2.5 rounded-xl text-sm flex items-center justify-center gap-2 cursor-pointer whitespace-nowrap">
+                        <i class="fa-solid fa-plus text-xs"></i> Nueva tarjeta
+                    </button>
+                </header>
+
+                <!-- KPIs globales de tarjetas -->
+                <section id="cards-kpis" class="grid grid-cols-2 md:grid-cols-3 gap-4">
+                    <!-- JS -->
+                </section>
+
+                <!-- Lista de tarjetas -->
+                <div id="cards-list" class="space-y-6">
+                    <!-- JS -->
+                </div>
+
+                <div id="cards-empty-state" class="hidden surface p-10 text-center">
+                    <i class="fa-solid fa-credit-card text-3xl mb-3" style="color: var(--text-muted);"></i>
+                    <p class="font-serif text-lg" style="color: var(--text-secondary);">Sin tarjetas registradas</p>
+                    <p class="text-xs mt-1" style="color: var(--text-tertiary);">Añade tu primera tarjeta para registrar compras a crédito</p>
+                </div>
+
+                <!-- Nota explicativa -->
+                <div class="surface p-5 flex gap-3 items-start" style="background: var(--accent-gold-soft); border-color: var(--accent-gold);">
+                    <i class="fa-solid fa-circle-info mt-0.5" style="color: var(--accent-gold);"></i>
+                    <div class="text-xs leading-relaxed" style="color: var(--text-secondary);">
+                        <strong style="color: var(--accent-gold);">Cómo funciona:</strong>
+                        Las compras con tarjeta se registran aquí en detalle pero <strong>no afectan</strong> tus cuentas ni el dashboard. Cuando pagues el estado mensual desde tu cuenta bancaria, registra ese pago como un gasto normal en "Nuevo movimiento" desde el dashboard. Así el detalle de qué compraste vive aquí, y el monto pagado se refleja en tu patrimonio una sola vez.
+                    </div>
+                </div>
+            </div>
+
             <!-- ====== VISTA: SINCRONIZACIÓN ====== -->
             <div id="view-sync" class="hidden space-y-6">
                 <header>
@@ -705,6 +825,44 @@
                             <button onclick="syncPullFromRemote()" class="btn-ghost flex-1 py-2.5 rounded-xl text-sm font-semibold cursor-pointer flex items-center justify-center gap-2">
                                 <i class="fa-solid fa-cloud-arrow-down text-xs"></i> Descargar desde nube
                             </button>
+                        </div>
+                    </div>
+
+                    <!-- Conectar otro dispositivo (QR) -->
+                    <div class="surface p-6">
+                        <h3 class="font-serif text-lg font-medium tracking-tight mb-1">Conectar otro dispositivo</h3>
+                        <p class="text-xs mb-5" style="color: var(--text-tertiary);">Escanea este QR con la cámara de otro dispositivo para autoconfigurar la sincronización en segundos</p>
+
+                        <div id="qr-hidden-state" class="text-center py-6">
+                            <div class="inline-flex items-center justify-center w-14 h-14 rounded-2xl mb-3" style="background: var(--accent-gold-soft); border: 1px solid var(--accent-gold);">
+                                <i class="fa-solid fa-shield-halved text-xl" style="color: var(--accent-gold);"></i>
+                            </div>
+                            <p class="text-sm mb-1" style="color: var(--text-secondary);">El código QR contiene tu token de GitHub</p>
+                            <p class="text-xs mb-4" style="color: var(--text-tertiary);">No lo muestres frente a cámaras públicas ni pantallas compartidas</p>
+                            <button onclick="showSyncQR()" class="btn-primary px-5 py-2 rounded-lg text-sm cursor-pointer">
+                                <i class="fa-solid fa-qrcode text-xs mr-1"></i> Mostrar código QR
+                            </button>
+                        </div>
+
+                        <div id="qr-visible-state" class="hidden">
+                            <div class="flex flex-col md:flex-row items-center gap-6">
+                                <div class="bg-white p-4 rounded-2xl shrink-0">
+                                    <canvas id="qr-canvas"></canvas>
+                                </div>
+                                <div class="flex-1 min-w-0 text-center md:text-left">
+                                    <p class="text-sm mb-3" style="color: var(--text-secondary);">
+                                        <strong style="color: var(--text-primary);">Desde otro dispositivo:</strong>
+                                    </p>
+                                    <ol class="text-xs space-y-2 mb-5" style="color: var(--text-tertiary);">
+                                        <li><strong style="color: var(--accent-gold);">1.</strong> Abre la cámara o un lector de QR</li>
+                                        <li><strong style="color: var(--accent-gold);">2.</strong> Apunta al código y toca el enlace que aparece</li>
+                                        <li><strong style="color: var(--accent-gold);">3.</strong> Se abrirá la app con todo precargado</li>
+                                    </ol>
+                                    <button onclick="hideSyncQR()" class="btn-ghost px-4 py-2 rounded-lg text-xs font-semibold cursor-pointer">
+                                        <i class="fa-solid fa-eye-slash text-[10px] mr-1"></i> Ocultar QR
+                                    </button>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
@@ -969,6 +1127,256 @@
     </div>
 </div>
 
+<!-- ====== MODAL: OBJETIVO / PRESUPUESTO ====== -->
+<div id="goal-modal" class="hidden fixed inset-0 flex items-center justify-center z-50 p-4" style="background: rgba(10, 11, 13, 0.85); backdrop-filter: blur(8px);">
+    <div class="surface max-w-md w-full p-7 shadow-2xl relative max-h-[90vh] overflow-y-auto custom-scrollbar">
+        <button onclick="closeModal('goal-modal')" class="absolute top-5 right-5 w-8 h-8 rounded-lg flex items-center justify-center cursor-pointer z-10" style="background: rgba(255,255,255,0.04); color: var(--text-tertiary);">
+            <i class="fa-solid fa-xmark text-sm"></i>
+        </button>
+        <h3 id="goal-modal-title" class="font-serif text-xl font-medium tracking-tight mb-5">Nuevo objetivo</h3>
+
+        <form id="goal-form" onsubmit="handleGoalSubmit(event)" class="space-y-4">
+            <input type="hidden" id="edit-goal-id" value="">
+            <div>
+                <label class="field-label">Nombre</label>
+                <input type="text" id="goal-name" required placeholder="Ej. Vacaciones en Patagonia">
+            </div>
+
+            <div id="goal-category-row">
+                <label class="field-label">Tipo</label>
+                <select id="goal-category">
+                    <!-- JS -->
+                </select>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label id="lbl-goal-target" class="field-label">Monto objetivo</label>
+                    <input type="number" id="goal-target" min="0" required placeholder="0">
+                </div>
+                <div>
+                    <label id="lbl-goal-current" class="field-label">Aportado hasta hoy</label>
+                    <input type="number" id="goal-current" min="0" value="0">
+                </div>
+            </div>
+
+            <div id="goal-deadline-row">
+                <label class="field-label">Fecha límite</label>
+                <input type="date" id="goal-deadline">
+                <p class="text-[10px] mt-1.5" style="color: var(--text-muted);">Dejar vacío si no hay plazo fijo</p>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="field-label">Color</label>
+                    <input type="color" id="goal-color" value="#c9a875">
+                </div>
+                <div>
+                    <label class="field-label">Ícono</label>
+                    <select id="goal-icon">
+                        <!-- JS -->
+                    </select>
+                </div>
+            </div>
+
+            <div>
+                <label class="field-label">Notas (opcional)</label>
+                <textarea id="goal-notes" rows="2" placeholder="Detalles, motivación, recordatorio..." style="resize: vertical;"></textarea>
+            </div>
+
+            <div class="pt-2 flex gap-3">
+                <button type="button" id="btn-delete-goal" onclick="deleteGoal()" class="hidden btn-ghost px-4 py-2.5 rounded-xl text-sm font-semibold cursor-pointer" style="color: var(--accent-coral);">
+                    <i class="fa-solid fa-trash text-xs"></i>
+                </button>
+                <button type="button" onclick="closeModal('goal-modal')" class="btn-ghost flex-1 py-2.5 rounded-xl text-sm font-semibold cursor-pointer">Cancelar</button>
+                <button type="submit" class="btn-primary flex-1 py-2.5 rounded-xl text-sm cursor-pointer">Guardar</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- ====== MODAL: APORTE / GASTO A OBJETIVO ====== -->
+<div id="contrib-modal" class="hidden fixed inset-0 flex items-center justify-center z-50 p-4" style="background: rgba(10, 11, 13, 0.85); backdrop-filter: blur(8px);">
+    <div class="surface max-w-sm w-full p-7 shadow-2xl relative">
+        <button onclick="closeModal('contrib-modal')" class="absolute top-5 right-5 w-8 h-8 rounded-lg flex items-center justify-center cursor-pointer" style="background: rgba(255,255,255,0.04); color: var(--text-tertiary);">
+            <i class="fa-solid fa-xmark text-sm"></i>
+        </button>
+        <h3 id="contrib-modal-title" class="font-serif text-xl font-medium tracking-tight mb-1">Aportar al objetivo</h3>
+        <p id="contrib-modal-subtitle" class="text-xs mb-5" style="color: var(--text-tertiary);">—</p>
+
+        <form id="contrib-form" onsubmit="handleContribSubmit(event)" class="space-y-4">
+            <input type="hidden" id="contrib-goal-id">
+            <div>
+                <label id="lbl-contrib-amount" class="field-label">Monto del aporte</label>
+                <input type="number" id="contrib-amount" min="1" required>
+            </div>
+            <div>
+                <label id="lbl-contrib-account" class="field-label">Cuenta de origen</label>
+                <select id="contrib-account" required></select>
+            </div>
+            <div>
+                <label class="field-label">Fecha</label>
+                <input type="date" id="contrib-date" required>
+            </div>
+            <p id="contrib-info-text" class="text-[11px] leading-relaxed" style="color: var(--text-muted);">
+                <i class="fa-solid fa-info-circle mr-1"></i>
+                Se descontará el monto de la cuenta y se registrará en tu bitácora.
+            </p>
+
+            <div class="pt-2 flex gap-3">
+                <button type="button" onclick="closeModal('contrib-modal')" class="btn-ghost w-1/2 py-2.5 rounded-xl text-sm font-semibold cursor-pointer">Cancelar</button>
+                <button type="submit" class="btn-primary w-1/2 py-2.5 rounded-xl text-sm cursor-pointer">Confirmar</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- ====== MODAL: TARJETA DE CRÉDITO ====== -->
+<div id="card-modal" class="hidden fixed inset-0 flex items-center justify-center z-50 p-4" style="background: rgba(10, 11, 13, 0.85); backdrop-filter: blur(8px);">
+    <div class="surface max-w-md w-full p-7 shadow-2xl relative max-h-[90vh] overflow-y-auto custom-scrollbar">
+        <button onclick="closeModal('card-modal')" class="absolute top-5 right-5 w-8 h-8 rounded-lg flex items-center justify-center cursor-pointer z-10" style="background: rgba(255,255,255,0.04); color: var(--text-tertiary);">
+            <i class="fa-solid fa-xmark text-sm"></i>
+        </button>
+        <h3 id="card-modal-title" class="font-serif text-xl font-medium tracking-tight mb-5">Nueva tarjeta de crédito</h3>
+
+        <form id="card-form" onsubmit="handleCardSubmit(event)" class="space-y-4">
+            <input type="hidden" id="edit-card-id" value="">
+            <div>
+                <label class="field-label">Nombre</label>
+                <input type="text" id="card-name" required placeholder="Ej. Visa Santander, Mastercard BCI...">
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="field-label">Cupo total</label>
+                    <input type="number" id="card-limit" min="0" value="0" required>
+                </div>
+                <div>
+                    <label class="field-label">Día de facturación</label>
+                    <input type="number" id="card-cutoff-day" min="1" max="31" value="25">
+                </div>
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="field-label">Color</label>
+                    <input type="color" id="card-color" value="#94a8c4">
+                </div>
+                <div>
+                    <label class="field-label">Marca / Banco</label>
+                    <select id="card-icon">
+                        <option value="fa-credit-card">💳 Genérica</option>
+                        <option value="fa-cc-visa">Visa</option>
+                        <option value="fa-cc-mastercard">Mastercard</option>
+                        <option value="fa-cc-amex">American Express</option>
+                        <option value="fa-cc-discover">Discover</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="pt-2 flex gap-3">
+                <button type="button" id="btn-delete-card" onclick="deleteCard()" class="hidden btn-ghost px-4 py-2.5 rounded-xl text-sm font-semibold cursor-pointer" style="color: var(--accent-coral);">
+                    <i class="fa-solid fa-trash text-xs"></i>
+                </button>
+                <button type="button" onclick="closeModal('card-modal')" class="btn-ghost flex-1 py-2.5 rounded-xl text-sm font-semibold cursor-pointer">Cancelar</button>
+                <button type="submit" class="btn-primary flex-1 py-2.5 rounded-xl text-sm cursor-pointer">Guardar</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- ====== MODAL: COMPRA/REEMBOLSO EN TARJETA ====== -->
+<div id="card-tx-modal" class="hidden fixed inset-0 flex items-center justify-center z-50 p-4" style="background: rgba(10, 11, 13, 0.85); backdrop-filter: blur(8px);">
+    <div class="surface max-w-md w-full p-7 shadow-2xl relative max-h-[90vh] overflow-y-auto custom-scrollbar">
+        <button onclick="closeModal('card-tx-modal')" class="absolute top-5 right-5 w-8 h-8 rounded-lg flex items-center justify-center cursor-pointer z-10" style="background: rgba(255,255,255,0.04); color: var(--text-tertiary);">
+            <i class="fa-solid fa-xmark text-sm"></i>
+        </button>
+        <h3 id="card-tx-modal-title" class="font-serif text-xl font-medium tracking-tight mb-1">Registrar compra</h3>
+        <p id="card-tx-modal-subtitle" class="text-xs mb-5" style="color: var(--text-tertiary);">—</p>
+
+        <form id="card-tx-form" onsubmit="handleCardTxSubmit(event)" class="space-y-4">
+            <input type="hidden" id="edit-card-tx-id" value="">
+            <input type="hidden" id="card-tx-card-id" value="">
+
+            <div>
+                <label class="field-label">Tipo de movimiento</label>
+                <div class="grid grid-cols-2 gap-2">
+                    <label class="rounded-xl p-2.5 text-center block cursor-pointer transition-all" style="background: var(--bg-base); border: 1px solid var(--border-subtle);">
+                        <input type="radio" name="card-tx-type" id="card-type-compra" value="compra" checked class="hidden">
+                        <span class="text-xs font-semibold block" style="color: var(--accent-coral);"><i class="fa-solid fa-cart-shopping mr-1 text-[10px]"></i>Compra</span>
+                    </label>
+                    <label class="rounded-xl p-2.5 text-center block cursor-pointer transition-all" style="background: var(--bg-base); border: 1px solid var(--border-subtle);">
+                        <input type="radio" name="card-tx-type" id="card-type-reembolso" value="reembolso" class="hidden">
+                        <span class="text-xs font-semibold block" style="color: var(--accent-sage);"><i class="fa-solid fa-rotate-left mr-1 text-[10px]"></i>Reembolso</span>
+                    </label>
+                </div>
+            </div>
+
+            <div>
+                <label class="field-label">Descripción</label>
+                <input type="text" id="card-tx-desc" required placeholder="Ej. Almuerzo, Amazon, Bencina...">
+            </div>
+
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="field-label">Monto</label>
+                    <input type="number" id="card-tx-amount" min="1" required>
+                </div>
+                <div>
+                    <label class="field-label">Cuotas</label>
+                    <input type="number" id="card-tx-installments" min="1" max="48" value="1">
+                </div>
+            </div>
+
+            <div>
+                <label class="field-label">Categoría</label>
+                <select id="card-tx-category">
+                    <option value="Alimentación">🍔 Alimentación</option>
+                    <option value="Compras">🛍️ Compras</option>
+                    <option value="Transporte">🚌 Transporte</option>
+                    <option value="Bencina">⛽ Bencina</option>
+                    <option value="Vehículo">🚗 Vehículo</option>
+                    <option value="Salud">⚕️ Salud</option>
+                    <option value="Mercado">🛒 Mercado</option>
+                    <option value="Servicios">💡 Servicios</option>
+                    <option value="Membresías">💎 Membresías</option>
+                    <option value="Viajes">✈️ Viajes</option>
+                    <option value="Regalos">🎁 Regalos</option>
+                    <option value="Educación">📚 Educación</option>
+                    <option value="Otro">📦 Otro</option>
+                </select>
+            </div>
+
+            <div>
+                <label class="field-label">Fecha</label>
+                <input type="date" id="card-tx-date" required>
+            </div>
+
+            <p class="text-[11px] leading-relaxed" style="color: var(--text-muted);">
+                <i class="fa-solid fa-info-circle mr-1"></i>
+                Esta compra no afectará tus cuentas ni el balance del dashboard. Solo queda registrada como detalle de la tarjeta.
+            </p>
+
+            <div class="pt-2 flex gap-3">
+                <button type="button" id="btn-delete-card-tx" onclick="deleteCardTx()" class="hidden btn-ghost px-4 py-2.5 rounded-xl text-sm font-semibold cursor-pointer" style="color: var(--accent-coral);">
+                    <i class="fa-solid fa-trash text-xs"></i>
+                </button>
+                <button type="button" onclick="closeModal('card-tx-modal')" class="btn-ghost flex-1 py-2.5 rounded-xl text-sm font-semibold cursor-pointer">Cancelar</button>
+                <button type="submit" class="btn-primary flex-1 py-2.5 rounded-xl text-sm cursor-pointer">Guardar</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<style>
+    label:has(input[id="card-type-compra"]:checked) {
+        border-color: var(--accent-coral) !important;
+        background: var(--accent-coral-soft) !important;
+    }
+    label:has(input[id="card-type-reembolso"]:checked) {
+        border-color: var(--accent-sage) !important;
+        background: var(--accent-sage-soft) !important;
+    }
+</style>
+
 <!-- Toast notification -->
 <div id="toast" class="toast">
     <i class="fa-solid fa-check-circle" style="color: var(--accent-sage);"></i>
@@ -1031,6 +1439,28 @@ let fixedIncomes = [
 
 let fixedFlowType = 'expense'; // 'expense' | 'income'
 
+let goals = [
+    { id: 301, type: 'goal', name: 'Vacaciones Patagonia', target: 1500000, current: 350000, deadline: '2027-01-15', category: 'Viajes', color: '#94a8c4', icon: 'fa-umbrella-beach', notes: 'Trekking Torres del Paine + Punta Arenas', contributions: [] },
+    { id: 302, type: 'goal', name: 'Fondo de emergencia', target: 3000000, current: 1200000, deadline: '', category: 'Otros', color: '#84cc8e', icon: 'fa-shield-halved', notes: '6 meses de gastos básicos', contributions: [] }
+];
+
+let budgets = [
+    { id: 401, type: 'budget', name: 'Cumpleaños mamá', target: 200000, current: 45000, deadline: '2026-08-12', category: 'Eventos', color: '#e5826b', icon: 'fa-cake-candles', notes: 'Regalo + cena en restaurante', contributions: [] }
+];
+
+let goalsViewType = 'goals'; // 'goals' | 'budgets'
+
+// Tarjetas de crédito (NO afectan el patrimonio neto)
+let creditCards = [
+    { id: 501, name: 'Visa Santander', limit: 1500000, cutoffDay: 25, color: '#94a8c4', icon: 'fa-cc-visa', transactions: [] }
+];
+
+// Selectores de comparación de gráficos (qué cuentas incluir en cada uno)
+let chartCompareSelections = {
+    line: [],      // [] = usar selector global (comportamiento clásico). Si tiene IDs = multi-cuenta
+    balances: []   // [] = todas. Si tiene IDs = filtrar a esas
+};
+
 let fixedMonthCursor = null;
 
 let currentConstraints = { timeframe: 'mensual', account: 'all' };
@@ -1045,10 +1475,14 @@ function saveState() {
             fixedExpenses,
             fixedIncomes,
             fixedFlowType,
+            goals,
+            budgets,
+            goalsViewType,
+            creditCards,
+            chartCompareSelections,
             savedAt: new Date().toISOString()
         }));
         updateLastSync();
-        // Disparar sync automático con debounce (si está conectado)
         if (typeof scheduleAutoSync === 'function') scheduleAutoSync();
     } catch (e) { console.warn('No se pudo guardar en localStorage:', e); }
 }
@@ -1064,6 +1498,13 @@ function loadState() {
             if (Array.isArray(parsed.fixedExpenses)) fixedExpenses = parsed.fixedExpenses;
             if (Array.isArray(parsed.fixedIncomes)) fixedIncomes = parsed.fixedIncomes;
             if (parsed.fixedFlowType === 'expense' || parsed.fixedFlowType === 'income') fixedFlowType = parsed.fixedFlowType;
+            if (Array.isArray(parsed.goals)) goals = parsed.goals;
+            if (Array.isArray(parsed.budgets)) budgets = parsed.budgets;
+            if (parsed.goalsViewType === 'goals' || parsed.goalsViewType === 'budgets') goalsViewType = parsed.goalsViewType;
+            if (Array.isArray(parsed.creditCards)) creditCards = parsed.creditCards;
+            if (parsed.chartCompareSelections && typeof parsed.chartCompareSelections === 'object') {
+                chartCompareSelections = Object.assign(chartCompareSelections, parsed.chartCompareSelections);
+            }
             return true;
         }
     } catch (e) { console.warn('No se pudo leer localStorage:', e); }
@@ -1117,6 +1558,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Restaurar el toggle de flujo fijo
     switchFixedFlowType(fixedFlowType);
+    switchGoalsTab(goalsViewType);
+
+    // Si la URL tiene parámetros de auto-configuración (QR escaneado), procesarlos primero
+    checkUrlForAutoConfig();
 
     // Si hay sincronización configurada, intentar pull inicial
     if (isConnected()) {
@@ -1132,7 +1577,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // === Navegación ===
 function switchTab(tabId) {
-    ['dashboard', 'estadisticas', 'fijos', 'cuentas', 'proyeccion', 'sync'].forEach(t => {
+    ['dashboard', 'estadisticas', 'fijos', 'objetivos', 'cuentas', 'tarjetas', 'proyeccion', 'sync'].forEach(t => {
         document.getElementById(`view-${t}`).classList.add('hidden');
         document.getElementById(`tab-${t}`).classList.remove('tab-active');
     });
@@ -1142,6 +1587,8 @@ function switchTab(tabId) {
     document.getElementById(`tab-${tabId}`).classList.add('tab-active');
     if (tabId === 'fijos') renderFixedView();
     if (tabId === 'sync') renderSyncView();
+    if (tabId === 'objetivos') renderGoalsView();
+    if (tabId === 'tarjetas') renderCardsView();
 }
 
 function openModal(id) { document.getElementById(id).classList.remove('hidden'); }
@@ -1163,6 +1610,24 @@ function closeModal(id) {
     }
     if (id === 'payment-modal') {
         document.getElementById('payment-form').reset();
+    }
+    if (id === 'goal-modal') {
+        document.getElementById('goal-form').reset();
+        document.getElementById('edit-goal-id').value = "";
+        document.getElementById('btn-delete-goal').classList.add('hidden');
+    }
+    if (id === 'contrib-modal') {
+        document.getElementById('contrib-form').reset();
+    }
+    if (id === 'card-modal') {
+        document.getElementById('card-form').reset();
+        document.getElementById('edit-card-id').value = "";
+        document.getElementById('btn-delete-card').classList.add('hidden');
+    }
+    if (id === 'card-tx-modal') {
+        document.getElementById('card-tx-form').reset();
+        document.getElementById('edit-card-tx-id').value = "";
+        document.getElementById('btn-delete-card-tx').classList.add('hidden');
     }
 }
 
@@ -1217,6 +1682,7 @@ function syncSelectorsAndUIs() {
     const interestSourceSel = document.getElementById('proj-base-source');
     const fixedAccSel = document.getElementById('fixed-account');
     const paymentAccSel = document.getElementById('payment-account');
+    const contribAccSel = document.getElementById('contrib-account');
 
     const prevMain = mainSel.value || 'all';
     const prevInterestSource = interestSourceSel.value || 'manual';
@@ -1226,6 +1692,7 @@ function syncSelectorsAndUIs() {
     destSel.innerHTML = '';
     if (fixedAccSel) fixedAccSel.innerHTML = '';
     if (paymentAccSel) paymentAccSel.innerHTML = '';
+    if (contribAccSel) contribAccSel.innerHTML = '';
     interestSourceSel.innerHTML = `
         <option value="manual">Ingresar manualmente</option>
         <option value="total_consolidado">Total de todas las cuentas</option>
@@ -1238,6 +1705,7 @@ function syncSelectorsAndUIs() {
         destSel.insertAdjacentHTML('beforeend', `<option value="${key}">${name}</option>`);
         if (fixedAccSel) fixedAccSel.insertAdjacentHTML('beforeend', `<option value="${key}">${name}</option>`);
         if (paymentAccSel) paymentAccSel.insertAdjacentHTML('beforeend', `<option value="${key}">${name}</option>`);
+        if (contribAccSel) contribAccSel.insertAdjacentHTML('beforeend', `<option value="${key}">${name}</option>`);
         interestSourceSel.insertAdjacentHTML('beforeend', `<option value="${key}">Balance de: ${name}</option>`);
     });
 
@@ -1309,6 +1777,7 @@ function recalculateCoreEngine() {
     computeAndRenderTrend(filteredTx);
 
     renderAccountList();
+    renderAccountsStrip();
     renderTransactionsTable();
     renderAccountCRUDList();
     renderTopExpenses(filteredTx);
@@ -1317,6 +1786,58 @@ function recalculateCoreEngine() {
     rebuildTimelineCharts(filteredTx, filterAcc, totalFunds);
 
     saveState();
+}
+
+// Banda de saldos de todas las cuentas al inicio del Resumen
+function renderAccountsStrip() {
+    const strip = document.getElementById('accounts-strip');
+    if (!strip) return;
+    const activeAcc = document.getElementById('account-selector').value || 'all';
+
+    const keys = Object.keys(accountsData);
+    if (keys.length === 0) {
+        strip.innerHTML = '<p class="text-xs px-3" style="color: var(--text-tertiary);">No hay cuentas registradas</p>';
+        return;
+    }
+
+    // Card "Todas" + una card por cuenta
+    const totalAll = Object.values(accountsData).reduce((s, a) => s + a.balance, 0);
+    const allActive = activeAcc === 'all';
+
+    const allCard = `
+        <button onclick="setMainAccountFilter('all')" class="shrink-0 surface-soft px-4 py-3 cursor-pointer transition-all text-left" style="min-width: 180px; ${allActive ? 'border-color: var(--accent-gold); background: var(--accent-gold-soft);' : 'opacity: 0.6;'}">
+            <div class="flex items-center gap-2 mb-1.5">
+                <div class="w-7 h-7 rounded-lg flex items-center justify-center" style="background: var(--accent-gold-soft); border: 1px solid var(--accent-gold);">
+                    <i class="fa-solid fa-layer-group text-[10px]" style="color: var(--accent-gold);"></i>
+                </div>
+                <span class="text-xs font-semibold">Todas</span>
+            </div>
+            <div class="font-mono text-sm font-medium number truncate" style="color: ${allActive ? 'var(--text-primary)' : 'var(--text-secondary)'};">${formatCurrency(totalAll)}</div>
+        </button>
+    `;
+
+    const cards = keys.map(k => {
+        const a = accountsData[k];
+        const isActive = activeAcc === k;
+        return `
+            <button onclick="setMainAccountFilter('${k}')" class="shrink-0 surface-soft px-4 py-3 cursor-pointer transition-all text-left" style="min-width: 180px; ${isActive ? `border-color: ${a.color}; background: ${a.color}15; box-shadow: 0 0 0 1px ${a.color}66;` : 'opacity: 0.6;'}">
+                <div class="flex items-center gap-2 mb-1.5">
+                    <div class="w-7 h-7 rounded-lg flex items-center justify-center" style="background: ${a.color}22; border: 1px solid ${a.color}55;">
+                        <i class="fa-solid ${a.icon} text-[10px]" style="color: ${a.color};"></i>
+                    </div>
+                    <span class="text-xs font-semibold truncate">${a.name}</span>
+                </div>
+                <div class="font-mono text-sm font-medium number truncate" style="color: ${isActive ? 'var(--text-primary)' : 'var(--text-secondary)'};">${formatCurrency(a.balance)}</div>
+            </button>
+        `;
+    }).join('');
+
+    strip.innerHTML = allCard + cards;
+}
+
+function setMainAccountFilter(key) {
+    document.getElementById('account-selector').value = key;
+    recalculateCoreEngine();
 }
 
 function computeAndRenderTrend(txs) {
@@ -1414,6 +1935,7 @@ function renderAccountCRUDList() {
 
 // === Charts - construcción ===
 function rebuildTimelineCharts(txs, currentAcc, currentTotalFunds) {
+    // Pie de gastos y barra ingresos/gastos siempre usan los txs filtrados globales
     let sortedTxs = [...txs].sort((a, b) => new Date(a.date) - new Date(b.date));
 
     let intervals = {};
@@ -1446,20 +1968,12 @@ function rebuildTimelineCharts(txs, currentAcc, currentTotalFunds) {
     let labels = Object.keys(intervals);
     let incomePoints = [];
     let expensePoints = [];
-    let timelineBalancePoints = [];
     let netFlowPoints = [];
 
-    let totalDelta = labels.reduce((sum, lbl) => sum + intervals[lbl].netDelta, 0);
-    let startingBalance = currentTotalFunds - totalDelta;
-
-    let currentRunningSum = startingBalance;
     labels.forEach(lbl => {
         incomePoints.push(intervals[lbl].ingresos);
         expensePoints.push(intervals[lbl].gastos);
         netFlowPoints.push(intervals[lbl].netDelta);
-
-        currentRunningSum += intervals[lbl].netDelta;
-        timelineBalancePoints.push(currentRunningSum);
     });
 
     if (labels.length === 0) {
@@ -1467,35 +1981,18 @@ function rebuildTimelineCharts(txs, currentAcc, currentTotalFunds) {
         incomePoints = [0];
         expensePoints = [0];
         netFlowPoints = [0];
-        timelineBalancePoints = [currentTotalFunds];
     }
 
-    // Chart Line (evolución del saldo)
-    const lineColor = currentAcc === 'all' ? '#c9a875' : (accountsData[currentAcc]?.color || '#c9a875');
-    chartLine.data.labels = labels;
-    chartLine.data.datasets = [{
-        label: currentAcc === 'all' ? 'Saldo consolidado' : accountsData[currentAcc].name,
-        data: timelineBalancePoints,
-        borderColor: lineColor,
-        backgroundColor: createGradient(chartLine.ctx, lineColor),
-        tension: 0.35,
-        fill: true,
-        borderWidth: 2.5,
-        pointRadius: 0,
-        pointHoverRadius: 6,
-        pointHoverBackgroundColor: lineColor,
-        pointHoverBorderColor: '#0a0b0d',
-        pointHoverBorderWidth: 2
-    }];
-    chartLine.update();
+    // ===== Chart Line: usa selección multi-cuenta si existe, si no usa currentAcc =====
+    buildLineChartDatasets(labels, currentAcc, currentTotalFunds);
 
-    // Chart Bar (ingresos vs gastos)
+    // Chart Bar
     chartBar.data.labels = labels;
     chartBar.data.datasets[0].data = incomePoints;
     chartBar.data.datasets[1].data = expensePoints;
     chartBar.update();
 
-    // Chart Cash Flow (nuevo)
+    // Chart Cash Flow
     chartCashFlow.data.labels = labels;
     chartCashFlow.data.datasets[0].data = netFlowPoints;
     chartCashFlow.data.datasets[0].backgroundColor = netFlowPoints.map(v => v >= 0 ? '#84cc8e' : '#e5826b');
@@ -1523,6 +2020,114 @@ function rebuildTimelineCharts(txs, currentAcc, currentTotalFunds) {
     chartPieCategory.data.labels = catLabels;
     chartPieCategory.data.datasets[0].data = catData;
     chartPieCategory.update();
+}
+
+// Construye los datasets del gráfico de línea según la selección de comparación
+function buildLineChartDatasets(labels, currentAcc, currentTotalFunds) {
+    const compareIds = chartCompareSelections.line || [];
+
+    // Función auxiliar: calcular serie temporal para un conjunto de cuentas
+    const buildSeries = (accountIds) => {
+        // Filtrar txs por esas cuentas
+        const txs = transactions.filter(t => {
+            return accountIds.includes(t.origin) || accountIds.includes(t.dest);
+        });
+
+        // Calcular saldo final del conjunto
+        const finalBalance = accountIds.reduce((s, id) => s + (accountsData[id]?.balance || 0), 0);
+
+        // Agrupar por intervalo
+        const intervals = {};
+        labels.forEach(lbl => { intervals[lbl] = { netDelta: 0 }; });
+
+        [...txs].sort((a, b) => new Date(a.date) - new Date(b.date)).forEach(t => {
+            const d = new Date(t.date);
+            let key = '';
+            if (currentConstraints.timeframe === 'semanal') {
+                const oneJan = new Date(d.getFullYear(), 0, 1);
+                const numberOfDays = Math.floor((d - oneJan) / (24 * 60 * 60 * 1000));
+                const week = Math.ceil((d.getDay() + 1 + numberOfDays) / 7);
+                key = `S${week} ${d.getFullYear()}`;
+            } else if (currentConstraints.timeframe === 'mensual') {
+                const months = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+                key = `${months[d.getMonth()]} ${String(d.getFullYear()).slice(-2)}`;
+            } else {
+                key = `${d.getFullYear()}`;
+            }
+            if (!intervals[key]) return;
+
+            // Calcular el cambio neto para este conjunto de cuentas
+            if (t.type === 'ingreso' && accountIds.includes(t.origin)) {
+                intervals[key].netDelta += t.amount;
+            } else if (t.type === 'gasto' && accountIds.includes(t.origin)) {
+                intervals[key].netDelta -= t.amount;
+            } else if (t.type === 'transferencia') {
+                if (accountIds.includes(t.origin)) intervals[key].netDelta -= t.amount;
+                if (accountIds.includes(t.dest)) intervals[key].netDelta += t.amount;
+            }
+        });
+
+        const totalDelta = labels.reduce((sum, lbl) => sum + (intervals[lbl]?.netDelta || 0), 0);
+        const startBalance = finalBalance - totalDelta;
+
+        let running = startBalance;
+        return labels.map(lbl => {
+            running += (intervals[lbl]?.netDelta || 0);
+            return running;
+        });
+    };
+
+    let datasets = [];
+
+    if (compareIds.length > 0) {
+        // Modo comparación: una línea por cuenta seleccionada
+        compareIds.forEach(accId => {
+            if (!accountsData[accId]) return;
+            const acc = accountsData[accId];
+            datasets.push({
+                label: acc.name,
+                data: buildSeries([accId]),
+                borderColor: acc.color,
+                backgroundColor: createGradient(chartLine.ctx, acc.color),
+                tension: 0.35,
+                fill: false,
+                borderWidth: 2.5,
+                pointRadius: 0,
+                pointHoverRadius: 5,
+                pointHoverBackgroundColor: acc.color,
+                pointHoverBorderColor: '#0a0b0d',
+                pointHoverBorderWidth: 2
+            });
+        });
+
+        // Actualizar label del botón
+        document.getElementById('line-compare-label').innerText = `${compareIds.length} cuenta${compareIds.length === 1 ? '' : 's'}`;
+    } else {
+        // Modo clásico: una sola línea según el selector global
+        const lineColor = currentAcc === 'all' ? '#c9a875' : (accountsData[currentAcc]?.color || '#c9a875');
+        const accountIds = currentAcc === 'all' ? Object.keys(accountsData) : [currentAcc];
+
+        datasets.push({
+            label: currentAcc === 'all' ? 'Saldo consolidado' : accountsData[currentAcc].name,
+            data: buildSeries(accountIds),
+            borderColor: lineColor,
+            backgroundColor: createGradient(chartLine.ctx, lineColor),
+            tension: 0.35,
+            fill: true,
+            borderWidth: 2.5,
+            pointRadius: 0,
+            pointHoverRadius: 6,
+            pointHoverBackgroundColor: lineColor,
+            pointHoverBorderColor: '#0a0b0d',
+            pointHoverBorderWidth: 2
+        });
+
+        document.getElementById('line-compare-label').innerText = 'Comparar cuentas';
+    }
+
+    chartLine.data.labels = labels;
+    chartLine.data.datasets = datasets;
+    chartLine.update();
 }
 
 function createGradient(ctx, color) {
@@ -1700,11 +2305,16 @@ function resetAccountForm() {
 
 // === Render: Lista cuentas (chart) ===
 function renderAccountList() {
+    const filterIds = chartCompareSelections.balances || [];
+    const visibleKeys = filterIds.length > 0
+        ? filterIds.filter(k => accountsData[k])
+        : Object.keys(accountsData);
+
     const labels = [];
     const balances = [];
     const colors = [];
 
-    Object.keys(accountsData).forEach(k => {
+    visibleKeys.forEach(k => {
         const a = accountsData[k];
         labels.push(a.name);
         balances.push(a.balance);
@@ -1716,6 +2326,14 @@ function renderAccountList() {
         chartAccountBalances.data.datasets[0].data = balances;
         chartAccountBalances.data.datasets[0].backgroundColor = colors;
         chartAccountBalances.update();
+    }
+
+    // Actualizar label del botón
+    const lbl = document.getElementById('balances-compare-label');
+    if (lbl) {
+        lbl.innerText = filterIds.length > 0
+            ? `${filterIds.length} cuenta${filterIds.length === 1 ? '' : 's'}`
+            : 'Filtrar cuentas';
     }
 }
 
@@ -2556,6 +3174,839 @@ function unmarkFixedPaid(fixedId) {
 }
 
 // ============================================================
+//  OBJETIVOS Y PRESUPUESTOS
+// ============================================================
+
+const GOALS_CFG = {
+    goals: {
+        title: 'Objetivos de ahorro',
+        addButton: 'Nuevo objetivo',
+        modalNewTitle: 'Nuevo objetivo de ahorro',
+        modalEditTitle: 'Editar objetivo',
+        targetLabel: 'Meta de ahorro',
+        currentLabel: 'Aportado hasta hoy',
+        emptyTitle: 'Sin objetivos registrados',
+        emptySubtitle: 'Crea tu primera meta de ahorro para empezar',
+        contribTitle: 'Aportar al objetivo',
+        contribInfo: 'Se descontará el monto de la cuenta y se sumará al objetivo. Quedará registrado en tu bitácora.',
+        contribAmountLabel: 'Monto del aporte',
+        actionLabel: 'Aportar',
+        defaultColor: '#84cc8e',
+        categories: [
+            { v: 'Casa', label: '🏡 Casa / Departamento' },
+            { v: 'Vehículo', label: '🚗 Vehículo' },
+            { v: 'Viajes', label: '✈️ Viajes' },
+            { v: 'Inversiones', label: '📈 Inversiones' },
+            { v: 'Educación', label: '🎓 Educación' },
+            { v: 'Emergencia', label: '🛡️ Fondo emergencia' },
+            { v: 'Jubilación', label: '🌅 Jubilación' },
+            { v: 'Otros', label: '✨ Otros' }
+        ],
+        icons: [
+            { v: 'fa-house', label: '🏡 Casa' },
+            { v: 'fa-building', label: '🏢 Departamento' },
+            { v: 'fa-car', label: '🚗 Auto' },
+            { v: 'fa-plane', label: '✈️ Avión' },
+            { v: 'fa-umbrella-beach', label: '🏖️ Vacaciones' },
+            { v: 'fa-chart-line', label: '📈 Inversión' },
+            { v: 'fa-graduation-cap', label: '🎓 Educación' },
+            { v: 'fa-shield-halved', label: '🛡️ Seguridad' },
+            { v: 'fa-piggy-bank', label: '🐷 Ahorro' },
+            { v: 'fa-bullseye', label: '🎯 Meta' },
+            { v: 'fa-heart', label: '❤️ Personal' },
+            { v: 'fa-star', label: '⭐ Sueño' }
+        ]
+    },
+    budgets: {
+        title: 'Presupuestos por evento',
+        addButton: 'Nuevo presupuesto',
+        modalNewTitle: 'Nuevo presupuesto',
+        modalEditTitle: 'Editar presupuesto',
+        targetLabel: 'Presupuesto total',
+        currentLabel: 'Gastado hasta hoy',
+        emptyTitle: 'Sin presupuestos registrados',
+        emptySubtitle: 'Crea un presupuesto para controlar gastos de un evento o proyecto',
+        contribTitle: 'Registrar gasto',
+        contribInfo: 'Se descontará el monto de la cuenta y se sumará al gasto del presupuesto.',
+        contribAmountLabel: 'Monto del gasto',
+        actionLabel: 'Gastar',
+        defaultColor: '#c9a875',
+        categories: [
+            { v: 'Viajes', label: '✈️ Viaje' },
+            { v: 'Eventos', label: '🎉 Evento' },
+            { v: 'Fiestas', label: '🎊 Fiesta' },
+            { v: 'Cumpleaños', label: '🎂 Cumpleaños' },
+            { v: 'Casa', label: '🏡 Casa / Remodelación' },
+            { v: 'Vehículo', label: '🚗 Vehículo' },
+            { v: 'Salud', label: '⚕️ Salud' },
+            { v: 'Educación', label: '📚 Educación / Curso' },
+            { v: 'Regalos', label: '🎁 Regalos' },
+            { v: 'Otros', label: '📦 Otros' }
+        ],
+        icons: [
+            { v: 'fa-plane', label: '✈️ Viaje' },
+            { v: 'fa-champagne-glasses', label: '🥂 Evento' },
+            { v: 'fa-cake-candles', label: '🎂 Cumpleaños' },
+            { v: 'fa-music', label: '🎵 Fiesta' },
+            { v: 'fa-ring', label: '💍 Boda' },
+            { v: 'fa-gift', label: '🎁 Regalo' },
+            { v: 'fa-house', label: '🏡 Hogar' },
+            { v: 'fa-car', label: '🚗 Auto' },
+            { v: 'fa-heart-pulse', label: '⚕️ Salud' },
+            { v: 'fa-graduation-cap', label: '🎓 Educación' },
+            { v: 'fa-shopping-bag', label: '🛍️ Compras' },
+            { v: 'fa-receipt', label: '📦 Otro' }
+        ]
+    }
+};
+
+function getActiveGoalsList() {
+    return goalsViewType === 'budgets' ? budgets : goals;
+}
+
+function getActiveGoalsCfg() {
+    return GOALS_CFG[goalsViewType];
+}
+
+function findGoalById(id) {
+    return goals.find(g => g.id == id) || budgets.find(b => b.id == id);
+}
+
+function isBudgetItem(id) {
+    return budgets.some(b => b.id == id);
+}
+
+function switchGoalsTab(type) {
+    if (type !== 'goals' && type !== 'budgets') return;
+    goalsViewType = type;
+    const goalsBtn = document.getElementById('goals-toggle-goals');
+    const budgetsBtn = document.getElementById('goals-toggle-budgets');
+    if (type === 'goals') {
+        goalsBtn.style.background = 'var(--bg-elevated)';
+        goalsBtn.style.color = 'var(--text-primary)';
+        budgetsBtn.style.background = 'transparent';
+        budgetsBtn.style.color = 'var(--text-tertiary)';
+    } else {
+        budgetsBtn.style.background = 'var(--bg-elevated)';
+        budgetsBtn.style.color = 'var(--text-primary)';
+        goalsBtn.style.background = 'transparent';
+        goalsBtn.style.color = 'var(--text-tertiary)';
+    }
+    saveState();
+    renderGoalsView();
+}
+
+function getDaysUntil(deadlineStr) {
+    if (!deadlineStr) return null;
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const d = new Date(deadlineStr + 'T00:00:00');
+    const diff = Math.ceil((d - today) / (1000 * 60 * 60 * 24));
+    return diff;
+}
+
+function formatDeadlineLabel(deadlineStr) {
+    if (!deadlineStr) return 'Sin plazo';
+    const days = getDaysUntil(deadlineStr);
+    const d = new Date(deadlineStr + 'T00:00:00');
+    const formatted = d.toLocaleDateString('es-CL', { day: '2-digit', month: 'short', year: 'numeric' });
+    if (days < 0) return `Vencido · ${formatted}`;
+    if (days === 0) return `Hoy · ${formatted}`;
+    if (days === 1) return `Mañana · ${formatted}`;
+    if (days < 30) return `En ${days} días · ${formatted}`;
+    if (days < 365) return `En ${Math.round(days / 30)} meses · ${formatted}`;
+    const years = (days / 365).toFixed(1);
+    return `En ${years} años · ${formatted}`;
+}
+
+function renderGoalsView() {
+    const cfg = getActiveGoalsCfg();
+    const list = getActiveGoalsList();
+
+    // Labels dinámicos
+    document.getElementById('btn-add-goal-label').innerText = cfg.addButton;
+    document.getElementById('goals-empty-title').innerText = cfg.emptyTitle;
+    document.getElementById('goals-empty-subtitle').innerText = cfg.emptySubtitle;
+
+    // KPIs resumen
+    const totalTarget = list.reduce((s, g) => s + g.target, 0);
+    const totalCurrent = list.reduce((s, g) => s + g.current, 0);
+    const avgProgress = totalTarget > 0 ? (totalCurrent / totalTarget) * 100 : 0;
+    const upcomingDeadlines = list.filter(g => {
+        const d = getDaysUntil(g.deadline);
+        return d !== null && d >= 0 && d <= 30;
+    }).length;
+
+    const summary = document.getElementById('goals-summary');
+    const isGoals = goalsViewType === 'goals';
+    summary.innerHTML = `
+        <div class="surface kpi-card p-5">
+            <div class="badge mb-2" style="color: var(--text-tertiary);">${isGoals ? 'Total ahorrado' : 'Total gastado'}</div>
+            <div class="font-serif text-2xl font-light number" style="color: var(--accent-sage);">${formatCurrency(totalCurrent)}</div>
+            <div class="text-[11px] mt-1" style="color: var(--text-muted);">de ${formatCurrency(totalTarget)}</div>
+        </div>
+        <div class="surface kpi-card p-5">
+            <div class="badge mb-2" style="color: var(--text-tertiary);">Progreso promedio</div>
+            <div class="font-serif text-2xl font-light number" style="color: var(--accent-gold);">${avgProgress.toFixed(0)}%</div>
+            <div class="progress-track mt-2">
+                <div class="progress-fill" style="width: ${Math.min(100, avgProgress)}%; background: var(--accent-gold);"></div>
+            </div>
+        </div>
+        <div class="surface kpi-card p-5">
+            <div class="badge mb-2" style="color: var(--text-tertiary);">${isGoals ? 'Metas próximas' : 'Plazos cercanos'}</div>
+            <div class="font-serif text-2xl font-light number">${upcomingDeadlines}</div>
+            <div class="text-[11px] mt-1" style="color: var(--text-muted);">en los próximos 30 días</div>
+        </div>
+    `;
+
+    // Grid de tarjetas
+    const grid = document.getElementById('goals-grid');
+    const emptyState = document.getElementById('goals-empty-state');
+
+    if (list.length === 0) {
+        grid.innerHTML = '';
+        emptyState.classList.remove('hidden');
+        return;
+    }
+    emptyState.classList.add('hidden');
+
+    // Ordenar: por plazo más cercano primero, sin plazo al final
+    const sorted = [...list].sort((a, b) => {
+        const da = getDaysUntil(a.deadline);
+        const db = getDaysUntil(b.deadline);
+        if (da === null && db === null) return 0;
+        if (da === null) return 1;
+        if (db === null) return -1;
+        return da - db;
+    });
+
+    grid.innerHTML = sorted.map(g => {
+        const pct = g.target > 0 ? Math.min(100, (g.current / g.target) * 100) : 0;
+        const remaining = Math.max(0, g.target - g.current);
+        const isCompleted = g.current >= g.target;
+        const days = getDaysUntil(g.deadline);
+        const deadlineLabel = formatDeadlineLabel(g.deadline);
+
+        // Cuánto necesita aportar por mes para llegar
+        let monthlyHint = '';
+        if (!isCompleted && days !== null && days > 0) {
+            const months = Math.max(1, days / 30);
+            const perMonth = remaining / months;
+            monthlyHint = `<div class="text-[11px] mt-1.5" style="color: var(--accent-gold);"><i class="fa-solid fa-lightbulb text-[9px] mr-1"></i>${formatCurrency(perMonth)}/mes para cumplir</div>`;
+        }
+
+        let deadlineColor = 'var(--text-tertiary)';
+        if (days !== null) {
+            if (days < 0) deadlineColor = 'var(--accent-coral)';
+            else if (days <= 30) deadlineColor = 'var(--accent-gold)';
+        }
+
+        let progressColor = g.color;
+        if (isCompleted) progressColor = 'var(--accent-sage)';
+
+        const completedBadge = isCompleted
+            ? `<span class="badge px-2 py-1 rounded-md shrink-0" style="background: var(--accent-sage-soft); color: var(--accent-sage);"><i class="fa-solid fa-check text-[9px] mr-1"></i>Cumplido</span>`
+            : '';
+
+        return `
+            <div class="surface p-5 relative group transition-all" style="border-left: 3px solid ${g.color};">
+                <div class="absolute top-3 right-3 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button onclick="editGoal(${g.id})" class="w-7 h-7 rounded-lg flex items-center justify-center cursor-pointer" style="background: rgba(0,0,0,0.3);">
+                        <i class="fa-solid fa-pen text-[10px]" style="color: var(--accent-gold);"></i>
+                    </button>
+                </div>
+
+                <div class="flex items-start gap-3 mb-4">
+                    <div class="w-12 h-12 rounded-xl flex items-center justify-center shrink-0" style="background: ${g.color}22; border: 1px solid ${g.color}44;">
+                        <i class="fa-solid ${g.icon} text-lg" style="color: ${g.color};"></i>
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <div class="flex items-start justify-between gap-2">
+                            <div class="font-semibold truncate pr-2">${g.name}</div>
+                            ${completedBadge}
+                        </div>
+                        <div class="text-xs mt-0.5" style="color: var(--text-tertiary);">${g.category}</div>
+                        <div class="text-[11px] mt-1 font-medium" style="color: ${deadlineColor};">
+                            <i class="fa-regular fa-calendar text-[10px] mr-1"></i>${deadlineLabel}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <div class="flex items-baseline justify-between mb-2">
+                        <span class="font-mono text-base font-medium number">${formatCurrency(g.current)}</span>
+                        <span class="font-mono text-xs" style="color: var(--text-tertiary);">/ ${formatCurrency(g.target)}</span>
+                    </div>
+                    <div class="progress-track" style="height: 8px;">
+                        <div class="progress-fill" style="width: ${pct}%; background: ${progressColor};"></div>
+                    </div>
+                    <div class="flex justify-between items-baseline mt-1.5">
+                        <span class="text-[11px] font-mono" style="color: var(--text-tertiary);">${pct.toFixed(0)}%</span>
+                        ${!isCompleted ? `<span class="text-[11px] font-mono" style="color: var(--text-tertiary);">Faltan ${formatCurrency(remaining)}</span>` : ''}
+                    </div>
+                    ${monthlyHint}
+                </div>
+
+                ${g.notes ? `<div class="text-xs italic mb-3 pt-2" style="color: var(--text-tertiary); border-top: 1px solid var(--border-subtle);">"${g.notes}"</div>` : ''}
+
+                <div class="flex items-center justify-between pt-3" style="border-top: 1px solid var(--border-subtle);">
+                    <span class="text-xs" style="color: var(--text-tertiary);">
+                        ${g.contributions && g.contributions.length > 0 ? `${g.contributions.length} ${g.contributions.length === 1 ? 'movimiento' : 'movimientos'}` : 'Sin movimientos aún'}
+                    </span>
+                    ${!isCompleted ? `
+                        <button onclick="openContribModal(${g.id})" class="btn-primary px-4 py-1.5 rounded-lg text-xs cursor-pointer">
+                            <i class="fa-solid fa-plus text-[10px] mr-1"></i> ${cfg.actionLabel}
+                        </button>
+                    ` : ''}
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+function populateGoalFormOptions() {
+    const cfg = getActiveGoalsCfg();
+    document.getElementById('goal-category').innerHTML = cfg.categories.map(c => `<option value="${c.v}">${c.label}</option>`).join('');
+    document.getElementById('goal-icon').innerHTML = cfg.icons.map(i => `<option value="${i.v}">${i.label}</option>`).join('');
+}
+
+function openGoalModal() {
+    const cfg = getActiveGoalsCfg();
+    document.getElementById('goal-form').reset();
+    document.getElementById('edit-goal-id').value = "";
+    document.getElementById('goal-color').value = cfg.defaultColor;
+    document.getElementById('goal-modal-title').innerText = cfg.modalNewTitle;
+    document.getElementById('lbl-goal-target').innerText = cfg.targetLabel;
+    document.getElementById('lbl-goal-current').innerText = cfg.currentLabel;
+    document.getElementById('btn-delete-goal').classList.add('hidden');
+    populateGoalFormOptions();
+    openModal('goal-modal');
+}
+
+function editGoal(id) {
+    const g = findGoalById(id);
+    if (!g) return;
+
+    // Cambiar al tipo correcto si es necesario
+    const isBudget = isBudgetItem(id);
+    if ((isBudget && goalsViewType !== 'budgets') || (!isBudget && goalsViewType !== 'goals')) {
+        switchGoalsTab(isBudget ? 'budgets' : 'goals');
+    }
+
+    const cfg = getActiveGoalsCfg();
+    populateGoalFormOptions();
+
+    document.getElementById('edit-goal-id').value = g.id;
+    document.getElementById('goal-name').value = g.name;
+    document.getElementById('goal-target').value = g.target;
+    document.getElementById('goal-current').value = g.current;
+    document.getElementById('goal-deadline').value = g.deadline || '';
+    document.getElementById('goal-category').value = g.category || cfg.categories[0].v;
+    document.getElementById('goal-color').value = g.color;
+    document.getElementById('goal-icon').value = g.icon;
+    document.getElementById('goal-notes').value = g.notes || '';
+    document.getElementById('goal-modal-title').innerText = cfg.modalEditTitle;
+    document.getElementById('lbl-goal-target').innerText = cfg.targetLabel;
+    document.getElementById('lbl-goal-current').innerText = cfg.currentLabel;
+    document.getElementById('btn-delete-goal').classList.remove('hidden');
+    openModal('goal-modal');
+}
+
+function handleGoalSubmit(e) {
+    e.preventDefault();
+    const idEdit = document.getElementById('edit-goal-id').value;
+    const data = {
+        name: document.getElementById('goal-name').value,
+        target: parseInt(document.getElementById('goal-target').value) || 0,
+        current: parseInt(document.getElementById('goal-current').value) || 0,
+        deadline: document.getElementById('goal-deadline').value || '',
+        category: document.getElementById('goal-category').value,
+        color: document.getElementById('goal-color').value,
+        icon: document.getElementById('goal-icon').value,
+        notes: document.getElementById('goal-notes').value.trim()
+    };
+
+    if (idEdit) {
+        const g = findGoalById(idEdit);
+        if (g) Object.assign(g, data);
+        showToast('Actualizado');
+    } else {
+        const target = getActiveGoalsList();
+        target.push({
+            id: Date.now(),
+            type: goalsViewType === 'budgets' ? 'budget' : 'goal',
+            ...data,
+            contributions: []
+        });
+        showToast('Creado');
+    }
+    closeModal('goal-modal');
+    saveState();
+    renderGoalsView();
+}
+
+function deleteGoal() {
+    const idEdit = document.getElementById('edit-goal-id').value;
+    if (!idEdit) return;
+    const g = findGoalById(idEdit);
+    if (!g) return;
+    if (!confirm(`¿Eliminar "${g.name}"? Las transacciones ya creadas no serán afectadas.`)) return;
+
+    if (isBudgetItem(idEdit)) {
+        budgets = budgets.filter(b => b.id != idEdit);
+    } else {
+        goals = goals.filter(g2 => g2.id != idEdit);
+    }
+    closeModal('goal-modal');
+    saveState();
+    renderGoalsView();
+    showToast('Eliminado', 'trash', 'coral');
+}
+
+function openContribModal(goalId) {
+    const g = findGoalById(goalId);
+    if (!g) return;
+
+    const isBudget = isBudgetItem(goalId);
+    if ((isBudget && goalsViewType !== 'budgets') || (!isBudget && goalsViewType !== 'goals')) {
+        switchGoalsTab(isBudget ? 'budgets' : 'goals');
+    }
+
+    const cfg = getActiveGoalsCfg();
+
+    document.getElementById('contrib-modal-title').innerText = cfg.contribTitle;
+    document.getElementById('contrib-modal-subtitle').innerText = `${g.name}`;
+    document.getElementById('lbl-contrib-amount').innerText = cfg.contribAmountLabel;
+    document.getElementById('contrib-info-text').innerHTML = `<i class="fa-solid fa-info-circle mr-1"></i>${cfg.contribInfo}`;
+    document.getElementById('contrib-goal-id').value = g.id;
+    document.getElementById('contrib-amount').value = '';
+    document.getElementById('contrib-date').value = new Date().toISOString().split('T')[0];
+
+    openModal('contrib-modal');
+}
+
+function handleContribSubmit(e) {
+    e.preventDefault();
+    const goalId = document.getElementById('contrib-goal-id').value;
+    const amount = parseInt(document.getElementById('contrib-amount').value);
+    const accountId = document.getElementById('contrib-account').value;
+    const date = document.getElementById('contrib-date').value;
+
+    const g = findGoalById(goalId);
+    if (!g || !accountsData[accountId] || !amount) return;
+
+    const isBudget = isBudgetItem(goalId);
+    const category = isBudget ? `Presupuesto: ${g.name}` : `Ahorro: ${g.name}`;
+
+    // Crear transacción
+    const txId = Date.now();
+    transactions.unshift({
+        id: txId,
+        type: 'gasto',
+        origin: accountId,
+        dest: null,
+        amount: amount,
+        category: category,
+        date: date,
+        goalId: g.id
+    });
+
+    accountsData[accountId].balance -= amount;
+    g.current = (g.current || 0) + amount;
+    if (!g.contributions) g.contributions = [];
+    g.contributions.push({ amount, accountId, date, txId });
+
+    closeModal('contrib-modal');
+    saveState();
+    renderGoalsView();
+    recalculateCoreEngine();
+
+    const isCompleted = g.current >= g.target;
+    if (isCompleted) {
+        showToast(`🎉 ¡${g.name} cumplido!`);
+    } else {
+        showToast(isBudget ? 'Gasto registrado' : 'Aporte registrado');
+    }
+}
+
+// ============================================================
+//  COMPARACIÓN MULTI-CUENTA EN GRÁFICOS
+// ============================================================
+
+function toggleChartCompareDropdown(chartKey) {
+    const dropdown = document.getElementById(`${chartKey}-compare-dropdown`);
+    const isHidden = dropdown.classList.contains('hidden');
+
+    if (isHidden) {
+        // Renderizar opciones antes de mostrar
+        renderChartCompareOptions(chartKey);
+        dropdown.classList.remove('hidden');
+    } else {
+        dropdown.classList.add('hidden');
+    }
+}
+
+function renderChartCompareOptions(chartKey) {
+    const container = document.getElementById(`${chartKey}-compare-options`);
+    if (!container) return;
+    const selected = chartCompareSelections[chartKey] || [];
+
+    container.innerHTML = Object.keys(accountsData).map(k => {
+        const a = accountsData[k];
+        const isChecked = selected.includes(k);
+        return `
+            <label class="flex items-center gap-2 px-3 py-2 rounded-lg cursor-pointer transition-all" style="background: ${isChecked ? a.color + '20' : 'var(--bg-base)'}; border: 1px solid ${isChecked ? a.color + '88' : 'var(--border-subtle)'};">
+                <input type="checkbox" ${isChecked ? 'checked' : ''} onchange="toggleChartCompareSelection('${chartKey}', '${k}')" class="!w-3.5 !h-3.5 cursor-pointer accent-amber-600 shrink-0">
+                <div class="w-2 h-2 rounded-full shrink-0" style="background: ${a.color};"></div>
+                <span class="text-xs font-medium truncate">${a.name}</span>
+            </label>
+        `;
+    }).join('');
+}
+
+function toggleChartCompareSelection(chartKey, accountId) {
+    if (!chartCompareSelections[chartKey]) chartCompareSelections[chartKey] = [];
+    const arr = chartCompareSelections[chartKey];
+    const idx = arr.indexOf(accountId);
+
+    if (idx === -1) {
+        // Límite razonable: máximo 5 cuentas para no saturar visualmente
+        if (arr.length >= 5 && chartKey === 'line') {
+            showToast('Máximo 5 cuentas para comparar', 'triangle-exclamation', 'coral');
+            return;
+        }
+        arr.push(accountId);
+    } else {
+        arr.splice(idx, 1);
+    }
+
+    // Re-renderizar el dropdown y los gráficos
+    renderChartCompareOptions(chartKey);
+    recalculateCoreEngine();
+}
+
+function resetChartCompare(chartKey) {
+    chartCompareSelections[chartKey] = [];
+    renderChartCompareOptions(chartKey);
+    recalculateCoreEngine();
+}
+
+// Cerrar dropdowns al hacer click fuera
+document.addEventListener('click', (e) => {
+    ['line', 'balances'].forEach(key => {
+        const dropdown = document.getElementById(`${key}-compare-dropdown`);
+        const trigger = document.getElementById(`${key}-compare-trigger`);
+        if (!dropdown || !trigger) return;
+        if (dropdown.classList.contains('hidden')) return;
+        if (!dropdown.contains(e.target) && !trigger.contains(e.target)) {
+            dropdown.classList.add('hidden');
+        }
+    });
+});
+
+// ============================================================
+//  TARJETAS DE CRÉDITO
+// ============================================================
+
+function getCardBalance(card) {
+    // Suma de movimientos de la tarjeta (compras suman, reembolsos restan)
+    if (!card.transactions) return 0;
+    return card.transactions.reduce((sum, t) => {
+        return sum + (t.type === 'compra' ? t.amount : -t.amount);
+    }, 0);
+}
+
+function renderCardsView() {
+    const listEl = document.getElementById('cards-list');
+    const emptyEl = document.getElementById('cards-empty-state');
+    const kpisEl = document.getElementById('cards-kpis');
+
+    // KPIs globales
+    let totalDebt = 0, totalLimit = 0;
+    creditCards.forEach(c => {
+        totalDebt += getCardBalance(c);
+        totalLimit += (c.limit || 0);
+    });
+    const availableCredit = totalLimit - totalDebt;
+    const utilization = totalLimit > 0 ? (totalDebt / totalLimit) * 100 : 0;
+
+    kpisEl.innerHTML = `
+        <div class="surface kpi-card p-5">
+            <div class="badge mb-2" style="color: var(--text-tertiary);">Deuda total</div>
+            <div class="font-serif text-2xl font-light number" style="color: var(--accent-coral);">${formatCurrency(totalDebt)}</div>
+            <div class="text-[11px] mt-1" style="color: var(--text-muted);">de ${formatCurrency(totalLimit)} de cupo</div>
+        </div>
+        <div class="surface kpi-card p-5">
+            <div class="badge mb-2" style="color: var(--text-tertiary);">Cupo disponible</div>
+            <div class="font-serif text-2xl font-light number" style="color: var(--accent-sage);">${formatCurrency(availableCredit)}</div>
+            <div class="text-[11px] mt-1" style="color: var(--text-muted);">no es capital tuyo</div>
+        </div>
+        <div class="surface kpi-card p-5">
+            <div class="badge mb-2" style="color: var(--text-tertiary);">Utilización</div>
+            <div class="font-serif text-2xl font-light number" style="color: ${utilization > 70 ? 'var(--accent-coral)' : utilization > 40 ? 'var(--accent-gold)' : 'var(--accent-sage)'};">${utilization.toFixed(0)}%</div>
+            <div class="progress-track mt-2">
+                <div class="progress-fill" style="width: ${Math.min(100, utilization)}%; background: ${utilization > 70 ? 'var(--accent-coral)' : utilization > 40 ? 'var(--accent-gold)' : 'var(--accent-sage)'};"></div>
+            </div>
+        </div>
+    `;
+
+    if (creditCards.length === 0) {
+        listEl.innerHTML = '';
+        emptyEl.classList.remove('hidden');
+        return;
+    }
+    emptyEl.classList.add('hidden');
+
+    listEl.innerHTML = creditCards.map(card => {
+        const debt = getCardBalance(card);
+        const available = (card.limit || 0) - debt;
+        const utilPct = card.limit > 0 ? (debt / card.limit) * 100 : 0;
+        const txs = [...(card.transactions || [])].sort((a, b) => new Date(b.date) - new Date(a.date));
+
+        const txRows = txs.length === 0
+            ? `<tr><td colspan="5" class="py-6 text-center text-xs" style="color: var(--text-tertiary);">Sin movimientos registrados</td></tr>`
+            : txs.map(t => {
+                const isCompra = t.type === 'compra';
+                const sign = isCompra ? '+' : '−';
+                const color = isCompra ? 'var(--accent-coral)' : 'var(--accent-sage)';
+                const cuotasNote = t.installments && t.installments > 1
+                    ? `<span class="text-[10px] font-mono ml-2 px-1.5 py-0.5 rounded" style="background: var(--bg-base); color: var(--text-tertiary);">${t.installments} cuotas</span>`
+                    : '';
+                return `
+                    <tr style="border-bottom: 1px solid var(--border-subtle);" class="hover:bg-white/[0.02] transition-colors">
+                        <td class="py-3 font-mono text-[11px]" style="color: var(--text-tertiary);">${t.date}</td>
+                        <td class="py-3">
+                            <span class="badge px-2 py-0.5 rounded-md" style="background: ${isCompra ? 'var(--accent-coral-soft)' : 'var(--accent-sage-soft)'}; color: ${color};">
+                                ${isCompra ? 'Compra' : 'Reemb.'}
+                            </span>
+                        </td>
+                        <td class="py-3">
+                            <div class="text-sm font-medium">${t.desc}${cuotasNote}</div>
+                            <div class="text-[10px]" style="color: var(--text-tertiary);">${t.category}</div>
+                        </td>
+                        <td class="py-3 text-right font-mono font-medium number" style="color: ${color};">
+                            ${sign}${formatCurrency(t.amount)}
+                        </td>
+                        <td class="py-3 text-right whitespace-nowrap">
+                            <button onclick="editCardTx(${card.id}, ${t.id})" class="w-7 h-7 rounded-lg cursor-pointer inline-flex items-center justify-center" style="background: rgba(255,255,255,0.03);">
+                                <i class="fa-solid fa-pen text-[10px]" style="color: var(--accent-gold);"></i>
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+
+        return `
+            <div class="surface overflow-hidden">
+                <!-- Header de tarjeta -->
+                <div class="p-6 relative" style="background: linear-gradient(135deg, ${card.color}33 0%, var(--bg-elevated) 60%); border-bottom: 1px solid var(--border-subtle);">
+                    <div class="flex items-start justify-between gap-4 flex-wrap">
+                        <div class="flex items-center gap-3">
+                            <div class="w-12 h-12 rounded-xl flex items-center justify-center" style="background: ${card.color}33; border: 1px solid ${card.color};">
+                                <i class="fa-${card.icon.startsWith('cc-') ? 'brands' : 'solid'} ${card.icon} text-xl" style="color: ${card.color};"></i>
+                            </div>
+                            <div>
+                                <div class="font-serif text-xl font-medium">${card.name}</div>
+                                <div class="text-xs mt-0.5" style="color: var(--text-tertiary);">Facturación día ${card.cutoffDay || '—'}</div>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <button onclick="openCardTxModal(${card.id})" class="btn-primary px-4 py-2 rounded-lg text-xs cursor-pointer flex items-center gap-2">
+                                <i class="fa-solid fa-plus text-[10px]"></i> Registrar
+                            </button>
+                            <button onclick="editCard(${card.id})" class="w-9 h-9 rounded-lg cursor-pointer flex items-center justify-center" style="background: rgba(0,0,0,0.3); color: var(--accent-gold);">
+                                <i class="fa-solid fa-pen text-xs"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-3 gap-4 mt-5">
+                        <div>
+                            <div class="text-[10px] uppercase tracking-widest" style="color: var(--text-tertiary);">Deuda actual</div>
+                            <div class="font-mono text-lg font-medium number mt-1" style="color: var(--accent-coral);">${formatCurrency(debt)}</div>
+                        </div>
+                        <div>
+                            <div class="text-[10px] uppercase tracking-widest" style="color: var(--text-tertiary);">Disponible</div>
+                            <div class="font-mono text-lg font-medium number mt-1" style="color: var(--accent-sage);">${formatCurrency(available)}</div>
+                        </div>
+                        <div>
+                            <div class="text-[10px] uppercase tracking-widest" style="color: var(--text-tertiary);">Cupo</div>
+                            <div class="font-mono text-lg font-medium number mt-1" style="color: var(--text-secondary);">${formatCurrency(card.limit || 0)}</div>
+                        </div>
+                    </div>
+                    <div class="progress-track mt-4" style="height: 6px;">
+                        <div class="progress-fill" style="width: ${Math.min(100, utilPct)}%; background: ${card.color};"></div>
+                    </div>
+                    <div class="text-[10px] text-right mt-1.5" style="color: var(--text-tertiary);">${utilPct.toFixed(0)}% utilizado</div>
+                </div>
+
+                <!-- Tabla de movimientos -->
+                <div class="p-6">
+                    <div class="text-[10px] uppercase tracking-widest mb-3" style="color: var(--text-tertiary);">Movimientos · ${txs.length}</div>
+                    <div class="overflow-x-auto custom-scrollbar">
+                        <table class="w-full text-left border-collapse min-w-[600px]">
+                            <thead>
+                                <tr style="border-bottom: 1px solid var(--border-subtle);">
+                                    <th class="pb-3 badge" style="color: var(--text-tertiary);">Fecha</th>
+                                    <th class="pb-3 badge" style="color: var(--text-tertiary);">Tipo</th>
+                                    <th class="pb-3 badge" style="color: var(--text-tertiary);">Descripción</th>
+                                    <th class="pb-3 badge text-right" style="color: var(--text-tertiary);">Monto</th>
+                                    <th class="pb-3 badge text-right" style="color: var(--text-tertiary);">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${txRows}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+function openCardModal() {
+    document.getElementById('card-form').reset();
+    document.getElementById('edit-card-id').value = "";
+    document.getElementById('card-color').value = '#94a8c4';
+    document.getElementById('card-modal-title').innerText = 'Nueva tarjeta de crédito';
+    document.getElementById('btn-delete-card').classList.add('hidden');
+    openModal('card-modal');
+}
+
+function editCard(id) {
+    const c = creditCards.find(c => c.id == id);
+    if (!c) return;
+    document.getElementById('edit-card-id').value = c.id;
+    document.getElementById('card-name').value = c.name;
+    document.getElementById('card-limit').value = c.limit;
+    document.getElementById('card-cutoff-day').value = c.cutoffDay || 25;
+    document.getElementById('card-color').value = c.color;
+    document.getElementById('card-icon').value = c.icon;
+    document.getElementById('card-modal-title').innerText = 'Editar tarjeta';
+    document.getElementById('btn-delete-card').classList.remove('hidden');
+    openModal('card-modal');
+}
+
+function handleCardSubmit(e) {
+    e.preventDefault();
+    const idEdit = document.getElementById('edit-card-id').value;
+    const data = {
+        name: document.getElementById('card-name').value,
+        limit: parseInt(document.getElementById('card-limit').value) || 0,
+        cutoffDay: Math.min(31, Math.max(1, parseInt(document.getElementById('card-cutoff-day').value) || 25)),
+        color: document.getElementById('card-color').value,
+        icon: document.getElementById('card-icon').value
+    };
+
+    if (idEdit) {
+        const c = creditCards.find(c => c.id == idEdit);
+        if (c) Object.assign(c, data);
+        showToast('Tarjeta actualizada');
+    } else {
+        creditCards.push({ id: Date.now(), ...data, transactions: [] });
+        showToast('Tarjeta creada');
+    }
+    closeModal('card-modal');
+    saveState();
+    renderCardsView();
+}
+
+function deleteCard() {
+    const idEdit = document.getElementById('edit-card-id').value;
+    if (!idEdit) return;
+    const c = creditCards.find(c => c.id == idEdit);
+    if (!c) return;
+    const txCount = (c.transactions || []).length;
+    const warning = txCount > 0 ? `\n\nSe eliminarán también sus ${txCount} movimientos registrados.` : '';
+    if (!confirm(`¿Eliminar la tarjeta "${c.name}"?${warning}`)) return;
+    creditCards = creditCards.filter(c => c.id != idEdit);
+    closeModal('card-modal');
+    saveState();
+    renderCardsView();
+    showToast('Tarjeta eliminada', 'trash', 'coral');
+}
+
+function openCardTxModal(cardId) {
+    const c = creditCards.find(c => c.id == cardId);
+    if (!c) return;
+    document.getElementById('card-tx-form').reset();
+    document.getElementById('edit-card-tx-id').value = '';
+    document.getElementById('card-tx-card-id').value = cardId;
+    document.getElementById('card-tx-modal-title').innerText = 'Registrar movimiento';
+    document.getElementById('card-tx-modal-subtitle').innerText = c.name;
+    document.getElementById('card-type-compra').checked = true;
+    document.getElementById('card-tx-installments').value = 1;
+    document.getElementById('card-tx-date').value = new Date().toISOString().split('T')[0];
+    document.getElementById('btn-delete-card-tx').classList.add('hidden');
+    openModal('card-tx-modal');
+}
+
+function editCardTx(cardId, txId) {
+    const c = creditCards.find(c => c.id == cardId);
+    if (!c) return;
+    const t = (c.transactions || []).find(t => t.id == txId);
+    if (!t) return;
+    document.getElementById('edit-card-tx-id').value = t.id;
+    document.getElementById('card-tx-card-id').value = cardId;
+    document.getElementById(`card-type-${t.type}`).checked = true;
+    document.getElementById('card-tx-desc').value = t.desc;
+    document.getElementById('card-tx-amount').value = t.amount;
+    document.getElementById('card-tx-installments').value = t.installments || 1;
+    document.getElementById('card-tx-category').value = t.category;
+    document.getElementById('card-tx-date').value = t.date;
+    document.getElementById('card-tx-modal-title').innerText = 'Editar movimiento';
+    document.getElementById('card-tx-modal-subtitle').innerText = c.name;
+    document.getElementById('btn-delete-card-tx').classList.remove('hidden');
+    openModal('card-tx-modal');
+}
+
+function handleCardTxSubmit(e) {
+    e.preventDefault();
+    const cardId = document.getElementById('card-tx-card-id').value;
+    const txIdEdit = document.getElementById('edit-card-tx-id').value;
+    const c = creditCards.find(c => c.id == cardId);
+    if (!c) return;
+
+    const data = {
+        type: document.querySelector('input[name="card-tx-type"]:checked').value,
+        desc: document.getElementById('card-tx-desc').value,
+        amount: parseInt(document.getElementById('card-tx-amount').value) || 0,
+        installments: parseInt(document.getElementById('card-tx-installments').value) || 1,
+        category: document.getElementById('card-tx-category').value,
+        date: document.getElementById('card-tx-date').value
+    };
+
+    if (!c.transactions) c.transactions = [];
+
+    if (txIdEdit) {
+        const t = c.transactions.find(t => t.id == txIdEdit);
+        if (t) Object.assign(t, data);
+        showToast('Movimiento actualizado');
+    } else {
+        c.transactions.push({ id: Date.now(), ...data });
+        showToast(data.type === 'compra' ? 'Compra registrada' : 'Reembolso registrado');
+    }
+
+    closeModal('card-tx-modal');
+    saveState();
+    renderCardsView();
+}
+
+function deleteCardTx() {
+    const cardId = document.getElementById('card-tx-card-id').value;
+    const txId = document.getElementById('edit-card-tx-id').value;
+    if (!cardId || !txId) return;
+    const c = creditCards.find(c => c.id == cardId);
+    if (!c || !c.transactions) return;
+    if (!confirm('¿Eliminar este movimiento de la tarjeta?')) return;
+    c.transactions = c.transactions.filter(t => t.id != txId);
+    closeModal('card-tx-modal');
+    saveState();
+    renderCardsView();
+    showToast('Movimiento eliminado', 'trash', 'coral');
+}
+
+// ============================================================
 //  SINCRONIZACIÓN — GitHub Gist como backend
 // ============================================================
 
@@ -2690,13 +4141,18 @@ async function ghUpdateGist(token, gistId, data) {
 
 function buildPayload() {
     return {
-        schemaVersion: 'capital_v3',
+        schemaVersion: 'capital_v5',
         savedAt: new Date().toISOString(),
         accountsData,
         transactions,
         fixedExpenses,
         fixedIncomes,
-        fixedFlowType
+        fixedFlowType,
+        goals,
+        budgets,
+        goalsViewType,
+        creditCards,
+        chartCompareSelections
     };
 }
 
@@ -2709,6 +4165,13 @@ function applyPayload(payload) {
     if (Array.isArray(payload.fixedExpenses)) fixedExpenses = payload.fixedExpenses;
     if (Array.isArray(payload.fixedIncomes)) fixedIncomes = payload.fixedIncomes;
     if (payload.fixedFlowType === 'expense' || payload.fixedFlowType === 'income') fixedFlowType = payload.fixedFlowType;
+    if (Array.isArray(payload.goals)) goals = payload.goals;
+    if (Array.isArray(payload.budgets)) budgets = payload.budgets;
+    if (payload.goalsViewType === 'goals' || payload.goalsViewType === 'budgets') goalsViewType = payload.goalsViewType;
+    if (Array.isArray(payload.creditCards)) creditCards = payload.creditCards;
+    if (payload.chartCompareSelections && typeof payload.chartCompareSelections === 'object') {
+        chartCompareSelections = Object.assign(chartCompareSelections, payload.chartCompareSelections);
+    }
     saveState();
 }
 
@@ -2978,6 +4441,87 @@ function formatRelativeTime(iso) {
     if (diff < 3600) return `hace ${Math.floor(diff / 60)} min`;
     if (diff < 86400) return `hace ${Math.floor(diff / 3600)} h`;
     return date.toLocaleString('es-CL', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
+}
+
+// ============================================================
+//  QR de sincronización rápida + Auto-conexión por URL
+// ============================================================
+
+function showSyncQR() {
+    if (!isConnected()) return;
+    // Construir URL de auto-configuración con token y gistId en hash (no se envía al servidor)
+    const baseUrl = window.location.origin + window.location.pathname;
+    const params = new URLSearchParams({
+        token: syncConfig.token,
+        gist: syncConfig.gistId
+    });
+    const fullUrl = `${baseUrl}#sync=${encodeURIComponent(params.toString())}`;
+
+    const canvas = document.getElementById('qr-canvas');
+    QRCode.toCanvas(canvas, fullUrl, {
+        width: 240,
+        margin: 1,
+        color: { dark: '#0a0b0d', light: '#ffffff' },
+        errorCorrectionLevel: 'M'
+    }, err => {
+        if (err) {
+            console.error(err);
+            showToast('Error al generar QR', 'triangle-exclamation', 'coral');
+            return;
+        }
+        document.getElementById('qr-hidden-state').classList.add('hidden');
+        document.getElementById('qr-visible-state').classList.remove('hidden');
+    });
+}
+
+function hideSyncQR() {
+    document.getElementById('qr-hidden-state').classList.remove('hidden');
+    document.getElementById('qr-visible-state').classList.add('hidden');
+}
+
+// Detecta parámetros en el hash de la URL y autoconfigura
+async function checkUrlForAutoConfig() {
+    const hash = window.location.hash;
+    if (!hash.startsWith('#sync=')) return;
+
+    try {
+        const params = new URLSearchParams(decodeURIComponent(hash.substring(6)));
+        const token = params.get('token');
+        const gist = params.get('gist');
+
+        if (!token || !gist) return;
+
+        // Limpiar la URL inmediatamente para que el token no quede en el historial del navegador
+        history.replaceState(null, '', window.location.pathname);
+
+        if (!confirm('Detectamos una configuración de sincronización en el enlace.\n\n¿Conectar este dispositivo automáticamente? (Se traerán los datos desde la nube)')) {
+            return;
+        }
+
+        // Validar token y descargar datos
+        const user = await ghValidateToken(token);
+        const { content } = await ghReadGist(token, gist);
+
+        syncConfig.token = token;
+        syncConfig.gistId = gist;
+        syncConfig.username = user.login;
+        syncConfig.autoSync = true;
+        syncConfig.lastSyncAt = new Date().toISOString();
+        saveSyncConfig();
+
+        applyPayload(content);
+        syncSelectorsAndUIs();
+        recalculateCoreEngine();
+        renderFixedView();
+        setSyncState('ok');
+        logSync(`Conectado desde QR como @${user.login}`, 'ok');
+        showToast('Sincronización configurada desde QR');
+
+        switchTab('sync');
+    } catch (err) {
+        console.error(err);
+        showToast('Error al autoconectar: ' + err.message, 'triangle-exclamation', 'coral');
+    }
 }
 
 // Listeners de red
