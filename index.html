@@ -781,6 +781,28 @@
                     <!-- JS -->
                 </section>
 
+                
+                <!-- Sección de Análisis de Gastos (Pie Chart) -->
+                <section class="surface p-6 lg:p-8 space-y-6">
+                    <div>
+                        <h3 class="font-serif text-xl font-medium tracking-tight">Distribución de Gastos (Ene 2026 - May 2026)</h3>
+                        <p class="text-xs mt-1" style="color: var(--text-tertiary);">Análisis detallado de compras en tus tarjetas en este período</p>
+                    </div>
+                    <div class="grid grid-cols-1 lg:grid-cols-5 gap-6 items-center">
+                        <div class="lg:col-span-2 flex justify-center">
+                            <div class="h-56 w-56 relative">
+                                <canvas id="chartCardsCategory"></canvas>
+                            </div>
+                        </div>
+                        <div class="lg:col-span-3 space-y-4">
+                            <div class="text-[10px] uppercase tracking-widest mb-2" style="color: var(--text-tertiary);">Categorías más importantes</div>
+                            <div id="cards-top-expenses-list" class="space-y-3">
+                                <!-- JS -->
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
                 <!-- Lista de tarjetas -->
                 <div id="cards-list" class="space-y-6">
                     <!-- JS -->
@@ -6779,7 +6801,111 @@ function renderTopExpenses(txs) {
                 </div>
             </div>
         `;
+        }).join('');
+    
+    // Render the categories pie/doughnut chart
+    renderCardsChart();
+}
+
+function renderCardsChart() {
+    const chartCanvas = document.getElementById('chartCardsCategory');
+    const listEl = document.getElementById('cards-top-expenses-list');
+    if (!chartCanvas || !listEl) return;
+
+    // Filter transactions from Jan 1, 2026 to May 28, 2026
+    const startDate = '2026-01-01';
+    const endDate = '2026-05-28';
+    const usdToClp = exchangeRate.usdToClp || 950;
+
+    const map = {};
+    let totalSpentCLPEq = 0;
+
+    creditCards.forEach(card => {
+        (card.transactions || []).forEach(t => {
+            if (t.type === 'compra' && t.date >= startDate && t.date <= endDate) {
+                const amtCLPEq = t.currency === 'USD' ? t.amount * usdToClp : t.amount;
+                // Normalize Uber as Transporte
+                let category = t.category;
+                if (t.desc.toLowerCase().includes('uber')) {
+                    category = 'Transporte';
+                }
+                
+                map[category] = (map[category] || 0) + amtCLPEq;
+                totalSpentCLPEq += amtCLPEq;
+            }
+        });
+    });
+
+    const sorted = Object.entries(map).sort((a, b) => b[1] - a[1]);
+
+    if (sorted.length === 0) {
+        listEl.innerHTML = `<div class="text-center py-8">
+            <i class="fa-regular fa-circle-check text-2xl mb-2" style="color: var(--text-muted);"></i>
+            <p class="text-xs" style="color: var(--text-tertiary);">Sin gastos registrados en el período (Ene - May 2026)</p>
+        </div>`;
+        if (window.chartCardsCategoryInstance) {
+            window.chartCardsCategoryInstance.destroy();
+            window.chartCardsCategoryInstance = null;
+        }
+        return;
+    }
+
+    const palette = ['#c9a875', '#94a8c4', '#a78bfa', '#84cc8e', '#e5826b', '#319795', '#b7791f', '#805ad5', '#fc8181', '#4a5568'];
+    
+    listEl.innerHTML = sorted.map(([cat, amount], i) => {
+        const pct = totalSpentCLPEq > 0 ? (amount / totalSpentCLPEq) * 100 : 0;
+        return `
+            <div>
+                <div class="flex justify-between items-baseline mb-1.5">
+                    <span class="text-sm font-medium truncate pr-2">${cat}</span>
+                    <span class="font-mono text-xs" style="color: var(--text-secondary);">${formatCurrency(amount)} (${pct.toFixed(0)}%)</span>
+                </div>
+                <div class="progress-track">
+                    <div class="progress-fill" style="width: ${pct}%; background: ${palette[i % palette.length]};"></div>
+                </div>
+            </div>
+        `;
     }).join('');
+
+    const ctx = chartCanvas.getContext('2d');
+    if (window.chartCardsCategoryInstance) {
+        window.chartCardsCategoryInstance.destroy();
+    }
+
+    const labels = sorted.map(x => x[0]);
+    const data = sorted.map(x => x[1]);
+    const backgroundColors = sorted.map((_, i) => palette[i % palette.length]);
+
+    window.chartCardsCategoryInstance = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: labels,
+            datasets: [{
+                data: data,
+                backgroundColor: backgroundColors,
+                borderWidth: 1,
+                borderColor: 'rgba(255, 255, 255, 0.06)'
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: false
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            const val = context.raw;
+                            return ` ${context.label}: $${val.toLocaleString('es-CL')}`;
+                        }
+                    }
+                }
+            },
+            cutout: '70%'
+        }
+    });
 }
 
 // === Render: Lista de cuentas (vista CRUD como cards) ===
