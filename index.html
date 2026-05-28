@@ -751,9 +751,14 @@
                         <h1 class="font-serif text-4xl font-light tracking-tight">Tarjetas de crédito</h1>
                         <p class="text-sm mt-2" style="color: var(--text-tertiary);">Registra compras detalladas sin afectar tu patrimonio. El gasto consolidado lo registras tú al pagar.</p>
                     </div>
-                    <button onclick="openCardModal()" class="btn-primary px-5 py-2.5 rounded-xl text-sm flex items-center justify-center gap-2 cursor-pointer whitespace-nowrap">
+                    <div class="flex flex-wrap items-center gap-2">
+                        <button onclick="createNewCategory()" class="btn-ghost border border-white/[0.08] px-4 py-2.5 rounded-xl text-sm flex items-center justify-center gap-2 cursor-pointer whitespace-nowrap" style="color: var(--accent-gold); background: rgba(255,255,255,0.02);">
+                            <i class="fa-solid fa-tags text-xs"></i> Nueva categoría
+                        </button>
+                        <button onclick="openCardModal()" class="btn-primary px-5 py-2.5 rounded-xl text-sm flex items-center justify-center gap-2 cursor-pointer whitespace-nowrap">
                         <i class="fa-solid fa-plus text-xs"></i> Nueva tarjeta
                     </button>
+                    </div>
                 </header>
 
                 <!-- Tipo de cambio -->
@@ -1650,7 +1655,10 @@
             </div>
 
             <div>
-                <label class="field-label">Categoría</label>
+                <div class="flex justify-between items-center mb-1">
+                    <label class="field-label !mb-0">Categoría</label>
+                    <button type="button" onclick="createNewCategory()" class="text-[10px] cursor-pointer" style="color: var(--accent-gold);"><i class="fa-solid fa-plus mr-1"></i>Crear nueva</button>
+                </div>
                 <select id="card-tx-category">
                     <option value="Alimentación">🍔 Alimentación</option>
                     <option value="Compras">🛍️ Compras</option>
@@ -6418,46 +6426,73 @@ function loadState() {
             if (Array.isArray(parsed.budgets)) budgets = parsed.budgets;
             if (parsed.goalsViewType === 'goals' || parsed.goalsViewType === 'budgets') goalsViewType = parsed.goalsViewType;
             if (Array.isArray(parsed.creditCards)) {
-                creditCards = parsed.creditCards.map(c => {
+                const savedCardIds = parsed.creditCards.map(c => Number(c.id));
+                const initialMap = {};
+                if (typeof INITIAL_CREDIT_CARDS !== 'undefined') {
+                    INITIAL_CREDIT_CARDS.forEach(ic => {
+                        initialMap[Number(ic.id)] = ic;
+                    });
+                }
+
+                let mergedCards = parsed.creditCards.map(c => {
+                    const cardId = Number(c.id);
                     let mapped = {
                         limitCLP: 0, limitUSD: 0, initialDebtCLP: 0, initialDebtUSD: 0,
-                        ...c
+                        ...c,
+                        id: cardId
                     };
-                    if (c.limitCLP === undefined && c.limit !== undefined) {
-                        mapped.limitCLP = c.limit;
-                    }
                     
-                    if (typeof INITIAL_CREDIT_CARDS !== 'undefined') {
-                        const initialCard = INITIAL_CREDIT_CARDS.find(ic => ic.id == c.id);
-                        if (initialCard) {
-                            const existingTxs = c.transactions || [];
-                            const initialTxs = initialCard.transactions || [];
-                            const mergedTxs = [...existingTxs];
-                            
-                            initialTxs.forEach(itx => {
-                                const exists = existingTxs.some(etx => 
-                                    etx.date === itx.date && 
-                                    etx.desc === itx.desc && 
-                                    Math.abs(etx.amount - itx.amount) < 0.01 &&
-                                    etx.currency === itx.currency
-                                );
-                                if (!exists) {
-                                    mergedTxs.push(itx);
-                                }
-                            });
-                            
-                            mapped.transactions = mergedTxs;
-                            mapped.limitCLP = mapped.limitCLP || initialCard.limitCLP;
-                            mapped.limitUSD = mapped.limitUSD || initialCard.limitUSD;
-                        }
+                    const initialCard = initialMap[cardId];
+                    if (initialCard) {
+                        const existingTxs = c.transactions || [];
+                        const initialTxs = initialCard.transactions || [];
+                        const mergedTxs = [...existingTxs];
+                        
+                        initialTxs.forEach(itx => {
+                            const exists = existingTxs.some(etx => 
+                                etx.date === itx.date && 
+                                etx.desc === itx.desc && 
+                                Math.abs(etx.amount - itx.amount) < 0.01 &&
+                                etx.currency === itx.currency
+                            );
+                            if (!exists) {
+                                mergedTxs.push(itx);
+                            }
+                        });
+                        
+                        // Force standard parameters of predefined credit cards (501 and 502) to match official hardcoded values
+                        mapped.name = initialCard.name;
+                        mapped.icon = initialCard.icon;
+                        mapped.color = initialCard.color;
+                        mapped.cutoffDay = initialCard.cutoffDay;
+                        mapped.limitCLP = initialCard.limitCLP;
+                        mapped.limitUSD = initialCard.limitUSD;
+                        mapped.initialDebtCLP = initialCard.initialDebtCLP;
+                        mapped.initialDebtUSD = initialCard.initialDebtUSD;
+                        mapped.transactions = mergedTxs;
                     }
                     return mapped;
                 });
+                
+                // Ensure predefined cards (501 and 502) are always present in the final list
+                if (typeof INITIAL_CREDIT_CARDS !== 'undefined') {
+                    INITIAL_CREDIT_CARDS.forEach(ic => {
+                        const icId = Number(ic.id);
+                        if (!savedCardIds.includes(icId)) {
+                            mergedCards.push(JSON.parse(JSON.stringify(ic)));
+                        }
+                    });
+                }
+                
+                creditCards = mergedCards;
             }
 
             if (parsed.exchangeRate && typeof parsed.exchangeRate === 'object') exchangeRate = parsed.exchangeRate;
             if (parsed.chartCompareSelections && typeof parsed.chartCompareSelections === 'object') {
                 chartCompareSelections = Object.assign(chartCompareSelections, parsed.chartCompareSelections);
+            }
+            if (typeof syncCategoryDropdowns === 'function') {
+                syncCategoryDropdowns();
             }
             return true;
         }
@@ -7042,6 +7077,65 @@ function renderCardsChart() {
             },
             cutout: '70%'
         }
+    });
+}
+
+let cardCategoryFilter = 'all';
+
+function setCardCategoryFilter(cat) {
+    if (cardCategoryFilter === cat) {
+        cardCategoryFilter = 'all';
+    } else {
+        cardCategoryFilter = cat;
+    }
+    renderCardsView();
+    // Scroll to the card list container if filtering is active to show results
+    if (cardCategoryFilter !== 'all') {
+        const el = document.getElementById('cards-list');
+        if (el) {
+            el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+    }
+}
+
+let customCategories = [];
+
+function createNewCategory() {
+    const name = prompt("Ingresa el nombre de la nueva categoría (ej. 🎮 Entretenimiento):");
+    if (!name) return;
+    
+    const cleanName = name.trim();
+    if (cleanName === "") return;
+    
+    if (customCategories.includes(cleanName)) {
+        showToast('La categoría ya existe', 'triangle-exclamation', 'coral');
+        return;
+    }
+    
+    customCategories.push(cleanName);
+    saveState();
+    syncCategoryDropdowns();
+    showToast('Categoría creada: ' + cleanName);
+}
+
+function syncCategoryDropdowns() {
+    const txSel = document.getElementById('tx-category');
+    const cardSel = document.getElementById('card-tx-category');
+    if (!txSel || !cardSel) return;
+    
+    if (!window._initialTxCategoryHTML) {
+        window._initialTxCategoryHTML = txSel.innerHTML;
+    }
+    if (!window._initialCardCategoryHTML) {
+        window._initialCardCategoryHTML = cardSel.innerHTML;
+    }
+    
+    txSel.innerHTML = window._initialTxCategoryHTML;
+    cardSel.innerHTML = window._initialCardCategoryHTML;
+    
+    customCategories.forEach(cat => {
+        txSel.insertAdjacentHTML('beforeend', `<option value="${cat}">${cat}</option>`);
+        cardSel.insertAdjacentHTML('beforeend', `<option value="${cat}">${cat}</option>`);
     });
 }
 
@@ -8952,7 +9046,22 @@ function renderCardsView() {
     }
     emptyEl.classList.add('hidden');
 
-    listEl.innerHTML = creditCards.map(card => {
+    let htmlContent = '';
+    if (typeof cardCategoryFilter !== 'undefined' && cardCategoryFilter !== 'all') {
+        htmlContent += `
+            <div class="flex justify-between items-center bg-white/[0.02] border border-white/[0.06] rounded-xl p-3 mb-5 animate-fade-in">
+                <div class="flex items-center gap-2">
+                    <span class="w-2.5 h-2.5 rounded-full animate-pulse" style="background-color: var(--accent-gold); box-shadow: 0 0 8px var(--accent-gold);"></span>
+                    <span class="text-xs">Mostrando sólo movimientos de la categoría: <strong style="color: var(--accent-gold);">${cardCategoryFilter}</strong></span>
+                </div>
+                <button onclick="setCardCategoryFilter('all')" class="text-xs px-2.5 py-1 rounded-lg cursor-pointer hover:bg-white/[0.06] transition-colors" style="color: var(--accent-coral); background: rgba(229,130,107,0.05); border: 1px solid rgba(229,130,107,0.15);">
+                    <i class="fa-solid fa-xmark mr-1"></i> Quitar filtro
+                </button>
+            </div>
+        `;
+    }
+
+    htmlContent += creditCards.map(card => {
         const bal = getCardBalance(card);
         const debtCLP = bal.clp;
         const debtUSD = bal.usd;
@@ -9131,6 +9240,8 @@ function renderCardsView() {
             </div>
         `;
     }).join('');
+
+    listEl.innerHTML = htmlContent;
 
     // === LLAMADO DE ACTUALIZACIÓN DE GRÁFICOS INCLUIDO AQUÍ ===
     renderCardsChart();
