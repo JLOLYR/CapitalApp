@@ -832,7 +832,6 @@
                 </section>
 
                 <!-- Lista de tarjetas -->
-                <div id="cards-list"
                 <div id="cards-list" class="space-y-6">
                     <!-- JS -->
                 </div>
@@ -8962,7 +8961,6 @@ function renderCardsView() {
         const availableCLP = limitCLP - debtCLP;
         const availableUSD = limitUSD - debtUSD;
 
-        // Equivalente total en CLP
         const debtTotalEq = debtCLP + (debtUSD * (exchangeRate.usdToClp || 0));
         const limitTotalEq = limitCLP + (limitUSD * (exchangeRate.usdToClp || 0));
         const utilPct = limitTotalEq > 0 ? (debtTotalEq / limitTotalEq) * 100 : 0;
@@ -8977,7 +8975,7 @@ function renderCardsView() {
         };
 
         const txRows = txs.length === 0
-            ? `<tr><td colspan="6" class="py-6 text-center text-xs" style="color: var(--text-tertiary);">${card.initialDebtCLP || card.initialDebtUSD ? 'Solo deuda inicial registrada, sin movimientos detallados' : 'Sin movimientos registrados'}</td></tr>`
+            ? `<tr><td colspan="5" class="py-6 text-center text-xs" style="color: var(--text-tertiary);">${card.initialDebtCLP || card.initialDebtUSD ? 'Solo deuda inicial registrada, sin movimientos detallados' : 'Sin movimientos registrados'}</td></tr>`
             : txs.map(t => {
                 const isCompra = t.type === 'compra';
                 const sign = isCompra ? '+' : '−';
@@ -9010,7 +9008,6 @@ function renderCardsView() {
                 `;
             }).join('');
 
-        // Bloques de cupos por moneda (solo si la tarjeta tiene esa moneda configurada)
         let currencyBlocks = '';
 
         if (hasCLP) {
@@ -9075,7 +9072,6 @@ function renderCardsView() {
             currencyBlocks = `<div class="text-xs text-center py-4" style="color: var(--text-tertiary);">Sin cupos configurados. Edita la tarjeta para añadir CLP o USD.</div>`;
         }
 
-        // Total consolidado solo si hay ambas monedas
         const consolidatedRow = hasCLP && hasUSD ? `
             <div class="mt-4 pt-4 flex items-center justify-between" style="border-top: 1px solid var(--border-subtle);">
                 <span class="text-[10px] uppercase tracking-widest" style="color: var(--text-tertiary);">Total consolidado (CLP eq.)</span>
@@ -9088,7 +9084,6 @@ function renderCardsView() {
 
         return `
             <div class="surface overflow-hidden">
-                <!-- Header de tarjeta -->
                 <div class="p-6 relative" style="background: linear-gradient(135deg, ${card.color}33 0%, var(--bg-elevated) 60%); border-bottom: 1px solid var(--border-subtle);">
                     <div class="flex items-start justify-between gap-4 flex-wrap mb-5">
                         <div class="flex items-center gap-3">
@@ -9109,16 +9104,11 @@ function renderCardsView() {
                             </button>
                         </div>
                     </div>
-
-                    <!-- Bloques de cupos por moneda -->
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
                         ${currencyBlocks}
                     </div>
-
                     ${consolidatedRow}
                 </div>
-
-                <!-- Tabla de movimientos -->
                 <div class="p-6">
                     <div class="text-[10px] uppercase tracking-widest mb-3" style="color: var(--text-tertiary);">Movimientos · ${txs.length}</div>
                     <div class="overflow-x-auto custom-scrollbar">
@@ -9141,8 +9131,10 @@ function renderCardsView() {
             </div>
         `;
     }).join('');
-}
 
+    // === LLAMADO DE ACTUALIZACIÓN DE GRÁFICOS INCLUIDO AQUÍ ===
+    renderCardsChart();
+}
 function openCardModal() {
     document.getElementById('card-form').reset();
     document.getElementById('edit-card-id').value = "";
