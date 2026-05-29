@@ -4684,11 +4684,28 @@ const formatUSD = (val) =>
 function getCardBalance(card) {
     let clp = card.initialDebtCLP || 0;
     let usd = card.initialDebtUSD || 0;
+
+    // Compras y reembolsos registrados directamente en la tarjeta
     (card.transactions || []).forEach(t => {
         const sign = t.type === 'compra' ? 1 : -1;
         if (t.currency === 'USD') usd += sign * t.amount;
         else clp += sign * t.amount;
     });
+
+    // Pagos registrados en el dashboard (categorías "Pago Visa XXXX CLP/USD")
+    // Se descuentan del saldo de la tarjeta correspondiente
+    const cardNum = card.name ? card.name.replace(/\D/g,'').slice(-4) : '';
+    transactions.forEach(t => {
+        if (t.type !== 'gasto') return;
+        const cat = t.category || '';
+        if (cat === 'Pago Visa ' + cardNum + ' CLP' || cat === 'Pago Visa ' + cardNum + ' (CLP)') {
+            clp -= t.amount;
+        } else if (cat === 'Pago Visa ' + cardNum + ' USD' || cat === 'Pago Visa ' + cardNum + ' (USD)') {
+            // El pago fue en pesos pero abona al cupo USD: convertir
+            usd -= t.amount / (exchangeRate.usdToClp || 950);
+        }
+    });
+
     return { clp, usd };
 }
 
