@@ -3,7 +3,7 @@
 //  Cache offline + estrategia network-first para HTML
 // ============================================================
 
-const CACHE_NAME = 'capital-v12';
+const CACHE_NAME = 'capital-v13';
 
 // Detectar la base del scope para que funcione en cualquier subdirectorio
 // (e.g. github.io/mi-repo/) sin tener que hardcodear el nombre del repo

@@ -259,11 +259,11 @@
                     <span>Objetivos</span>
                 </button>
                 <button onclick="switchTab('cuentas')" id="tab-cuentas" class="tab-item px-3.5 py-3 flex items-center gap-2 text-sm font-medium cursor-pointer whitespace-nowrap">
-                    <i class="fa-regular fa-credit-card text-xs"></i>
+                    <i class="fa-solid fa-wallet text-xs"></i>
                     <span>Cuentas</span>
                 </button>
                 <button onclick="switchTab('tarjetas')" id="tab-tarjetas" class="tab-item px-3.5 py-3 flex items-center gap-2 text-sm font-medium cursor-pointer whitespace-nowrap">
-                    <i class="fa-solid fa-credit-card text-xs"></i>
+                    <i class="fa-solid fa-wallet text-xs"></i>
                     <span>Tarjetas</span>
                 </button>
                 <button onclick="switchTab('proyeccion')" id="tab-proyeccion" class="tab-item px-3.5 py-3 flex items-center gap-2 text-sm font-medium cursor-pointer whitespace-nowrap">
@@ -802,13 +802,13 @@
                 <section class="surface p-6 lg:p-8 space-y-6">
                     <div class="flex flex-wrap justify-between items-center gap-3">
                         <div>
-                            <h3 class="font-serif text-xl font-medium tracking-tight">Análisis de Gastos (Ene - May 2026)</h3>
-                            <p class="text-xs mt-1" style="color: var(--text-tertiary);">Visualización mensual y por categorías de tus consumos con tarjeta</p>
+                            <h3 class="font-serif text-xl font-medium tracking-tight">Análisis de Gastos</h3>
+                            <p class="text-xs mt-1" style="color: var(--text-tertiary);">Haz click en la torta o en una categoría para ver su evolución mensual en la barra</p>
                         </div>
                         <div class="flex items-center gap-2">
-                            <label class="text-xs" style="color: var(--text-secondary);">Período del gráfico de torta:</label>
+                            <label class="text-xs" style="color: var(--text-secondary);">Filtrar torta:</label>
                             <select id="cards-analysis-month" onchange="renderCardsChart()" class="!w-auto py-1.5 px-3 text-xs bg-raised border border-subtle rounded-lg cursor-pointer">
-                                <option value="all">Consolidado Ene - May 2026</option>
+                                <option value="all">Todos los meses</option>
                                 <option value="2026-01">Enero 2026</option>
                                 <option value="2026-02">Febrero 2026</option>
                                 <option value="2026-03">Marzo 2026</option>
@@ -818,30 +818,36 @@
                         </div>
                     </div>
 
-                    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
-                        <!-- Gráfico de barras (Mensual) -->
-                        <div class="lg:col-span-4 surface-soft p-5 flex flex-col justify-between">
-                            <div class="text-[10px] uppercase tracking-widest mb-3" style="color: var(--text-tertiary);">Gasto Mensual Histórico (Barra)</div>
-                            <div class="h-48 relative">
+                    <!-- Row 1: bar + pie + categories -->
+                    <div class="grid grid-cols-1 lg:grid-cols-12 gap-5 items-stretch">
+                        <div class="lg:col-span-5 surface-soft p-5 flex flex-col">
+                            <div class="flex items-center justify-between mb-3">
+                                <div class="text-[10px] uppercase tracking-widest" style="color: var(--text-tertiary);">Gasto vs Pago mensual</div>
+                                <div id="bar-cat-badge" class="text-[10px] px-2 py-0.5 rounded-full hidden" style="background:rgba(201,168,117,0.15); color:var(--accent-gold);"></div>
+                            </div>
+                            <div class="h-52 relative">
                                 <canvas id="chartCardsMonthlyBar"></canvas>
                             </div>
                         </div>
 
-                        <!-- Gráfico de dona (Por categoría) -->
-                        <div class="lg:col-span-4 surface-soft p-5 flex flex-col justify-between items-center">
-                            <div class="text-[10px] w-full uppercase tracking-widest mb-3" style="color: var(--text-tertiary);">Distribución del Período Seleccionado</div>
+                        <div class="lg:col-span-3 surface-soft p-5 flex flex-col items-center">
+                            <div class="text-[10px] w-full uppercase tracking-widest mb-3" style="color: var(--text-tertiary);">Por categoría · click para filtrar</div>
                             <div class="h-44 w-44 relative my-auto">
                                 <canvas id="chartCardsCategory"></canvas>
                             </div>
                         </div>
 
-                        <!-- Lista de mayores gastos -->
-                        <div class="lg:col-span-4 surface-soft p-5 flex flex-col justify-between">
-                            <div class="text-[10px] uppercase tracking-widest mb-3" style="color: var(--text-tertiary);">Categorías más importantes</div>
-                            <div id="cards-top-expenses-list" class="space-y-3 my-auto">
-                                <!-- JS -->
+                        <div class="lg:col-span-4 surface-soft p-5 flex flex-col">
+                            <div class="text-[10px] uppercase tracking-widest mb-3" style="color: var(--text-tertiary);">Categorías · click para comparar</div>
+                            <div id="cards-top-expenses-list" class="space-y-1 flex-1 overflow-y-auto">
                             </div>
                         </div>
+                    </div>
+
+                    <!-- Row 2: trends -->
+                    <div class="surface-soft p-5">
+                        <div class="text-[10px] uppercase tracking-widest mb-3" id="cards-trends-title" style="color: var(--text-tertiary);">Tendencias mes a mes</div>
+                        <div id="cards-trends-list" class="divide-y divide-white/[0.04]"></div>
                     </div>
                 </section>
 
@@ -1281,6 +1287,10 @@
                     <option value="Sueldo / Retornos">💰 Sueldo / Retornos</option>
                     <option value="Depósito Inversión">📈 Depósito Inversión</option>
                     <option value="Pago Tarjeta">💳 Pago Tarjeta</option>
+                    <option value="Pago Visa 2706 CLP">💳 Pago Visa 2706 (CLP)</option>
+                    <option value="Pago Visa 2706 USD">💳 Pago Visa 2706 (USD)</option>
+                    <option value="Pago Visa 5916 CLP">💳 Pago Visa 5916 (CLP)</option>
+                    <option value="Pago Visa 5916 USD">💳 Pago Visa 5916 (USD)</option>
                     <option value="Dividendo">🏠 Dividendo</option>
                     <option value="Vehículo">🚗 Vehículo</option>
                     <option value="Bencina">⛽ Bencina</option>
@@ -6431,7 +6441,11 @@ const CATEGORY_COLOR_MAP = {
     'Campo':              '#90cdf4',
     'Sueldo / Retornos':  '#48bb78',
     'Depósito Inversión': '#4299e1',
-    'Pago Tarjeta':       '#667eea',
+    'Pago Tarjeta':           '#667eea',
+    'Pago Visa 2706 CLP':     '#667eea',
+    'Pago Visa 2706 USD':     '#764abc',
+    'Pago Visa 5916 CLP':     '#4f46e5',
+    'Pago Visa 5916 USD':     '#7c3aed',
     'Dividendo':          '#ed8936',
     'Devolución Sii':     '#38b2ac',
     'Eventos':            '#e53e3e',
@@ -6963,49 +6977,50 @@ function renderTopExpenses(txs) {
     renderCardsChart();
 }
 
+// Track which category is selected in bar chart
+let _barSelectedCat = null;
+
 function renderCardsChart() {
     const chartCanvas = document.getElementById('chartCardsCategory');
     const barCanvas = document.getElementById('chartCardsMonthlyBar');
     const listEl = document.getElementById('cards-top-expenses-list');
     const periodSel = document.getElementById('cards-analysis-month');
-    
     if (!chartCanvas || !barCanvas || !listEl || !periodSel) return;
 
-    const selectedPeriod = periodSel.value; // 'all' or '2026-01', '2026-02', etc.
+    const selectedPeriod = periodSel.value;
     const usdToClp = exchangeRate.usdToClp || 950;
 
-    // Gather all transactions in Ene - May 2026
-    const startDate = '2026-01-01';
-    const endDate = '2026-05-28';
+    // Dynamically compute months from all card transactions
+    const allMonthsSet = new Set();
+    creditCards.forEach(card => {
+        (card.transactions || []).forEach(t => {
+            if (t.type === 'compra') allMonthsSet.add(t.date.substring(0, 7));
+        });
+    });
+    const allMonths = [...allMonthsSet].sort();
+    if (allMonths.length === 0) allMonths.push(...['2026-01','2026-02','2026-03','2026-04','2026-05']);
 
-    const monthlySums = {
-        '2026-01': 0,
-        '2026-02': 0,
-        '2026-03': 0,
-        '2026-04': 0,
-        '2026-05': 0
-    };
-
+    const monthlySums = {};
+    // For category-by-month: {cat: {month: amount}}
+    const catMonthMap = {};
     const categoryMap = {};
+    // Card payments from transactions array
+    const cardPaymentsByMonth = {};
+    allMonths.forEach(m => { monthlySums[m] = 0; cardPaymentsByMonth[m] = 0; });
     let totalSpentCLPEq = 0;
 
     creditCards.forEach(card => {
         (card.transactions || []).forEach(t => {
-            if (t.type === 'compra' && t.date >= startDate && t.date <= endDate) {
+            if (t.type === 'compra') {
                 const amtCLPEq = t.currency === 'USD' ? t.amount * usdToClp : t.amount;
-                
-                // Get month key (YYYY-MM)
                 const monthKey = t.date.substring(0, 7);
-                if (monthlySums[monthKey] !== undefined) {
-                    monthlySums[monthKey] += amtCLPEq;
-                }
-
-                // Filter category map by selected period
+                if (monthlySums[monthKey] !== undefined) monthlySums[monthKey] += amtCLPEq;
+                let category = t.category;
+                const descLower = (t.desc || '').toLowerCase();
+                if (descLower.includes('uber') || descLower.includes('taxi') || descLower.includes('cabify')) category = 'Transporte';
+                if (!catMonthMap[category]) catMonthMap[category] = {};
+                catMonthMap[category][monthKey] = (catMonthMap[category][monthKey] || 0) + amtCLPEq;
                 if (selectedPeriod === 'all' || monthKey === selectedPeriod) {
-                    let category = t.category;
-                    if (t.desc.toLowerCase().includes('uber')) {
-                        category = 'Transporte';
-                    }
                     categoryMap[category] = (categoryMap[category] || 0) + amtCLPEq;
                     totalSpentCLPEq += amtCLPEq;
                 }
@@ -7013,69 +7028,114 @@ function renderCardsChart() {
         });
     });
 
-    // Render Bar Chart (Monthly sums)
+    // Also read card payments from main transactions
+    transactions.forEach(t => {
+        if (t.type === 'gasto') {
+            const cat = t.category || '';
+            if (cat.startsWith('Pago Visa') || cat === 'Pago Tarjeta') {
+                const monthKey = t.date.substring(0, 7);
+                if (cardPaymentsByMonth[monthKey] !== undefined) cardPaymentsByMonth[monthKey] += t.amount;
+            }
+        }
+    });
+
+    // ── Bar chart ──────────────────────────────────────────────────────────
     const barCtx = barCanvas.getContext('2d');
-    if (window.chartCardsMonthlyBarInstance) {
-        window.chartCardsMonthlyBarInstance.destroy();
+    if (window.chartCardsMonthlyBarInstance) window.chartCardsMonthlyBarInstance.destroy();
+
+    const MONTH_NAMES = {
+        '01':'Ene','02':'Feb','03':'Mar','04':'Abr','05':'May',
+        '06':'Jun','07':'Jul','08':'Ago','09':'Sep','10':'Oct','11':'Nov','12':'Dic'
+    };
+    const barLabels = allMonths.map(m => MONTH_NAMES[m.split('-')[1]] || m);
+
+    let barDataset;
+    if (_barSelectedCat && catMonthMap[_barSelectedCat]) {
+        // Show selected category per month
+        const catData = allMonths.map(m => catMonthMap[_barSelectedCat][m] || 0);
+        barDataset = [{
+            label: _barSelectedCat,
+            data: catData,
+            backgroundColor: getCategoryColor(_barSelectedCat, 0) + 'bb',
+            borderColor: getCategoryColor(_barSelectedCat, 0),
+            borderWidth: 1.5,
+            borderRadius: 5
+        }];
+    } else {
+        // Default: total spend + payments
+        barDataset = [
+            {
+                label: 'Gasto',
+                data: allMonths.map(m => monthlySums[m]),
+                backgroundColor: 'rgba(229, 130, 107, 0.5)',
+                borderColor: '#e5826b',
+                borderWidth: 1.5,
+                borderRadius: 5
+            },
+            {
+                label: 'Pago',
+                data: allMonths.map(m => cardPaymentsByMonth[m]),
+                backgroundColor: 'rgba(132, 204, 142, 0.5)',
+                borderColor: '#84cc8e',
+                borderWidth: 1.5,
+                borderRadius: 5
+            }
+        ];
     }
 
-    const monthsLabels = ['Ene', 'Feb', 'Mar', 'Abr', 'May'];
-    const barData = [
-        monthlySums['2026-01'],
-        monthlySums['2026-02'],
-        monthlySums['2026-03'],
-        monthlySums['2026-04'],
-        monthlySums['2026-05']
-    ];
+    const tooltipStyle = {
+        backgroundColor: '#15181d',
+        titleColor: '#f5f5f4',
+        bodyColor: '#a8a29e',
+        borderColor: 'rgba(255,255,255,0.08)',
+        borderWidth: 1,
+        padding: 10,
+        cornerRadius: 8
+    };
 
     window.chartCardsMonthlyBarInstance = new Chart(barCtx, {
         type: 'bar',
-        data: {
-            labels: monthsLabels,
-            datasets: [{
-                label: 'Gasto Tarjetas',
-                data: barData,
-                backgroundColor: 'rgba(201, 168, 117, 0.45)',
-                borderColor: '#c9a875',
-                borderWidth: 1.5,
-                borderRadius: 4
-            }]
-        },
+        data: { labels: barLabels, datasets: barDataset },
         options: {
             responsive: true,
             maintainAspectRatio: false,
             plugins: {
-                legend: { display: false },
+                legend: {
+                    display: true,
+                    labels: { color: '#a8a29e', font: { size: 10 }, usePointStyle: true, pointStyle: 'circle', boxWidth: 6, padding: 10 }
+                },
                 tooltip: {
+                    ...tooltipStyle,
                     callbacks: {
-                        label: function(context) {
-                            return ` Total: $${context.raw.toLocaleString('es-CL')}`;
-                        }
+                        label: ctx => ` ${ctx.dataset.label}: ${formatCurrencyShort(ctx.raw)}`
                     }
                 }
             },
             scales: {
                 x: {
                     grid: { display: false },
-                    ticks: { color: 'var(--text-tertiary)', font: { size: 10 } }
+                    ticks: { color: '#a8a29e', font: { size: 10 } },
+                    border: { display: false }
                 },
                 y: {
-                    grid: { color: 'rgba(255, 255, 255, 0.04)' },
+                    grid: { color: 'rgba(255,255,255,0.04)', drawTicks: false },
                     ticks: {
-                        color: 'var(--text-tertiary)',
+                        color: '#a8a29e',
                         font: { size: 9 },
-                        callback: function(value) {
-                            if (value >= 1e6) return `$${(value / 1e6).toFixed(1)}M`;
-                            if (value >= 1e3) return `$${(value / 1e3).toFixed(0)}K`;
-                            return `$${value}`;
+                        padding: 6,
+                        callback: v => {
+                            if (v >= 1e6) return `$${(v/1e6).toFixed(1)}M`;
+                            if (v >= 1e3) return `$${(v/1e3).toFixed(0)}K`;
+                            return `$${v}`;
                         }
-                    }
+                    },
+                    border: { display: false }
                 }
             }
         }
     });
 
-    // Render Doughnut Chart & List
+    // ── Pie / Doughnut ─────────────────────────────────────────────────────
     const sorted = Object.entries(categoryMap).sort((a, b) => b[1] - a[1]);
 
     if (sorted.length === 0) {
@@ -7083,68 +7143,155 @@ function renderCardsChart() {
             <i class="fa-regular fa-circle-check text-2xl mb-2" style="color: var(--text-muted);"></i>
             <p class="text-xs" style="color: var(--text-tertiary);">Sin gastos en este período</p>
         </div>`;
-        if (window.chartCardsCategoryInstance) {
-            window.chartCardsCategoryInstance.destroy();
-            window.chartCardsCategoryInstance = null;
-        }
+        if (window.chartCardsCategoryInstance) { window.chartCardsCategoryInstance.destroy(); window.chartCardsCategoryInstance = null; }
         return;
     }
 
     const palette = sorted.map((x,i) => getCategoryColor(x[0], i));
-    
-    listEl.innerHTML = sorted.slice(0, 5).map(([cat, amount], i) => {
+
+    listEl.innerHTML = sorted.slice(0, 6).map(([cat, amount], i) => {
         const pct = totalSpentCLPEq > 0 ? (amount / totalSpentCLPEq) * 100 : 0;
+        const isSelected = _barSelectedCat === cat;
         return `
-            <div>
-                <div class="flex justify-between items-baseline mb-1.5">
-                    <span class="text-xs font-medium truncate pr-2">${cat}</span>
-                    <span class="font-mono text-[10px]" style="color: var(--text-secondary);">${formatCurrencyShort(amount)} (${pct.toFixed(0)}%)</span>
+            <div onclick="selectCardCatBar('${cat.replace(/'/g,"\'")}')" class="cursor-pointer rounded-lg p-1.5 transition-all ${isSelected ? 'ring-1' : 'hover:bg-white/[0.03]'}"
+                style="${isSelected ? `ring-color: ${palette[i]}; background: ${palette[i]}11;` : ''}">
+                <div class="flex justify-between items-center mb-1">
+                    <span class="text-xs font-medium truncate pr-2 flex items-center gap-1.5">
+                        <span class="w-2 h-2 rounded-full shrink-0" style="background:${palette[i]};"></span>
+                        ${cat}
+                    </span>
+                    <span class="font-mono text-[10px] shrink-0" style="color: var(--text-secondary);">${formatCurrencyShort(amount)} <span style="color:var(--text-muted);">${pct.toFixed(0)}%</span></span>
                 </div>
-                <div class="progress-track" style="height: 4px;">
-                    <div class="progress-fill" style="width: ${pct}%; background: ${palette[i % palette.length]};"></div>
+                <div class="progress-track" style="height: 3px;">
+                    <div class="progress-fill" style="width: ${pct}%; background: ${palette[i]};"></div>
                 </div>
             </div>
         `;
     }).join('');
 
     const ctx = chartCanvas.getContext('2d');
-    if (window.chartCardsCategoryInstance) {
-        window.chartCardsCategoryInstance.destroy();
-    }
-
-    const labels = sorted.map(x => x[0]);
-    const data = sorted.map(x => x[1]);
-    const backgroundColors = sorted.map((_, i) => palette[i % palette.length]);
+    if (window.chartCardsCategoryInstance) window.chartCardsCategoryInstance.destroy();
 
     window.chartCardsCategoryInstance = new Chart(ctx, {
         type: 'doughnut',
         data: {
-            labels: labels,
-            datasets: [{
-                data: data,
-                backgroundColor: backgroundColors,
-                borderWidth: 1,
-                borderColor: 'rgba(255, 255, 255, 0.06)'
-            }]
+            labels: sorted.map(x => x[0]),
+            datasets: [{ data: sorted.map(x => x[1]), backgroundColor: palette, borderWidth: 2, borderColor: '#0f1115' }]
         },
         options: {
             responsive: true,
             maintainAspectRatio: false,
+            onClick: function(evt, elements) {
+                if (elements.length > 0) {
+                    const cat = sorted[elements[0].index][0];
+                    selectCardCatBar(cat);
+                }
+            },
             plugins: {
                 legend: { display: false },
                 tooltip: {
+                    ...tooltipStyle,
                     callbacks: {
-                        label: function(context) {
-                            const total = context.dataset.data.reduce((a,b)=>a+b,0);
-                            const pct = total > 0 ? ((context.raw/total)*100).toFixed(1) : 0;
-                            return ` ${context.label}: $${context.raw.toLocaleString('es-CL')} (${pct}%)`;
+                        label: ctx => {
+                            const total = ctx.dataset.data.reduce((a,b)=>a+b,0);
+                            const pct = total > 0 ? ((ctx.raw/total)*100).toFixed(1) : 0;
+                            return ` ${ctx.label}: ${formatCurrencyShort(ctx.raw)} (${pct}%)`;
                         }
                     }
                 }
             },
-            cutout: '70%'
+            cutout: '68%'
         }
     });
+
+    // ── Trends panel ───────────────────────────────────────────────────────
+    renderCardTrends(catMonthMap, allMonths);
+}
+
+function selectCardCatBar(cat) {
+    _barSelectedCat = (_barSelectedCat === cat) ? null : cat;
+    const badge = document.getElementById('bar-cat-badge');
+    if (badge) {
+        if (_barSelectedCat) {
+            badge.textContent = `Filtrando: ${_barSelectedCat}  ✕`;
+            badge.classList.remove('hidden');
+            badge.onclick = () => selectCardCatBar(_barSelectedCat);
+            badge.style.cursor = 'pointer';
+        } else {
+            badge.classList.add('hidden');
+        }
+    }
+    renderCardsChart();
+}
+
+function renderCardTrends(catMonthMap, allMonths) {
+    const el = document.getElementById('cards-trends-list');
+    if (!el || allMonths.length < 2) return;
+
+    const prevMonth = allMonths[allMonths.length - 2];
+    const currMonth = allMonths[allMonths.length - 1];
+    const MONTH_NAMES = {
+        '01':'Ene','02':'Feb','03':'Mar','04':'Abr','05':'May',
+        '06':'Jun','07':'Jul','08':'Ago','09':'Sep','10':'Oct','11':'Nov','12':'Dic'
+    };
+    const prevLabel = MONTH_NAMES[prevMonth.split('-')[1]];
+    const currLabel = MONTH_NAMES[currMonth.split('-')[1]];
+
+    const rows = Object.entries(catMonthMap)
+        .map(([cat, months]) => {
+            const prev = months[prevMonth] || 0;
+            const curr = months[currMonth] || 0;
+            if (prev === 0 && curr === 0) return null;
+            const delta = prev > 0 ? ((curr - prev) / prev) * 100 : (curr > 0 ? 100 : 0);
+            return { cat, prev, curr, delta };
+        })
+        .filter(Boolean)
+        .sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta))
+        .slice(0, 5);
+
+    if (rows.length === 0) {
+        el.innerHTML = `<div class="text-xs text-center py-4" style="color:var(--text-tertiary);">Necesitas al menos 2 meses de datos</div>`;
+        return;
+    }
+
+    el.innerHTML = rows.map(r => {
+        const up = r.delta > 0;
+        const icon = up ? 'fa-arrow-trend-up' : 'fa-arrow-trend-down';
+        const color = up ? 'var(--accent-coral)' : 'var(--accent-sage)';
+        const sign = up ? '+' : '';
+        const catColor = getCategoryColor(r.cat, 0);
+        return `
+            <div class="flex items-center justify-between py-2" style="border-bottom:1px solid var(--border-subtle);">
+                <div class="flex items-center gap-2 min-w-0">
+                    <span class="w-2 h-2 rounded-full shrink-0" style="background:${catColor};"></span>
+                    <span class="text-xs font-medium truncate">${r.cat}</span>
+                </div>
+                <div class="flex items-center gap-3 shrink-0">
+                    <span class="font-mono text-[10px]" style="color:var(--text-tertiary);">${formatCurrencyShort(r.prev)}</span>
+                    <i class="fa-solid fa-arrow-right text-[9px]" style="color:var(--text-muted);"></i>
+                    <span class="font-mono text-[10px]">${formatCurrencyShort(r.curr)}</span>
+                    <span class="flex items-center gap-1 text-[10px] font-semibold font-mono px-1.5 py-0.5 rounded-md" style="color:${color}; background:${color}22;">
+                        <i class="fa-solid ${icon} text-[9px]"></i> ${sign}${r.delta.toFixed(0)}%
+                    </span>
+                </div>
+            </div>
+        `;
+    }).join('');
+
+    const trendTitle = document.getElementById('cards-trends-title');
+    if (trendTitle) trendTitle.textContent = `Tendencias ${prevLabel} → ${currLabel}`;
+}
+
+
+function toggleCardTxSection(cardId) {
+    const section = document.getElementById(`card-tx-section-${cardId}`);
+    const chevron = document.getElementById(`card-tx-chevron-${cardId}`);
+    if (!section) return;
+    const isHidden = section.classList.contains('hidden');
+    section.classList.toggle('hidden', !isHidden);
+    if (chevron) {
+        chevron.style.transform = isHidden ? 'rotate(90deg)' : '';
+    }
 }
 
 let cardCategoryFilter = 'all';
@@ -9383,23 +9530,29 @@ function renderCardsView() {
                     </div>
                     ${consolidatedRow}
                 </div>
-                <div class="p-6">
-                    <div class="text-[10px] uppercase tracking-widest mb-3" style="color: var(--text-tertiary);">Movimientos · ${txs.length}</div>
-                    <div class="overflow-x-auto custom-scrollbar">
-                        <table class="w-full text-left border-collapse min-w-[600px]">
-                            <thead>
-                                <tr style="border-bottom: 1px solid var(--border-subtle);">
-                                    <th class="pb-3 badge" style="color: var(--text-tertiary);">Fecha</th>
-                                    <th class="pb-3 badge" style="color: var(--text-tertiary);">Tipo</th>
-                                    <th class="pb-3 badge" style="color: var(--text-tertiary);">Descripción</th>
-                                    <th class="pb-3 badge text-right" style="color: var(--text-tertiary);">Monto</th>
-                                    <th class="pb-3 badge text-right" style="color: var(--text-tertiary);">Acciones</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                ${txRows}
-                            </tbody>
-                        </table>
+                <div class="border-t" style="border-color: var(--border-subtle);">
+                    <button onclick="toggleCardTxSection(${card.id})" class="w-full flex items-center justify-between px-6 py-4 cursor-pointer hover:bg-white/[0.02] transition-colors">
+                        <div class="flex items-center gap-2">
+                            <i id="card-tx-chevron-${card.id}" class="fa-solid fa-chevron-right text-[10px] transition-transform" style="color:var(--text-muted);"></i>
+                            <span class="text-[10px] uppercase tracking-widest" style="color: var(--text-tertiary);">Movimientos · ${txs.length}</span>
+                        </div>
+                        <span class="text-[10px]" style="color:var(--text-muted);">Click para expandir</span>
+                    </button>
+                    <div id="card-tx-section-${card.id}" class="hidden px-6 pb-6">
+                        <div class="overflow-x-auto custom-scrollbar">
+                            <table class="w-full text-left border-collapse min-w-[600px]">
+                                <thead>
+                                    <tr style="border-bottom: 1px solid var(--border-subtle);">
+                                        <th class="pb-3 badge" style="color: var(--text-tertiary);">Fecha</th>
+                                        <th class="pb-3 badge" style="color: var(--text-tertiary);">Tipo</th>
+                                        <th class="pb-3 badge" style="color: var(--text-tertiary);">Descripción</th>
+                                        <th class="pb-3 badge text-right" style="color: var(--text-tertiary);">Monto</th>
+                                        <th class="pb-3 badge text-right" style="color: var(--text-tertiary);">Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody>${txRows}</tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
             </div>
