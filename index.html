@@ -349,6 +349,15 @@
                     </div>
                 </section>
 
+                <!-- Gasto total mensual -->
+                <div class="surface p-4 flex items-center justify-between rounded-xl" id="monthly-total-banner">
+                    <div class="flex items-center gap-2">
+                        <i class="fa-solid fa-chart-pie text-sm" style="color:var(--accent-coral);"></i>
+                        <span class="text-sm font-medium">Gasto total del período</span>
+                    </div>
+                    <span id="monthly-total-amount" class="font-serif text-xl font-light number" style="color:var(--accent-coral);">$0</span>
+                </div>
+
                 <!-- Controles temporalidad -->
                 <div class="flex items-center justify-between">
                     <div class="text-xs uppercase tracking-widest" style="color: var(--text-tertiary);">Temporalidad</div>
@@ -1292,6 +1301,13 @@
                     <option value="Salud">⚕️ Salud</option>
                     <option value="Educación">📚 Educación</option>
                     <option value="Otro">📦 Otro</option>
+                    <option value="Restaurant">🍽️ Restaurant</option>
+                    <option value="Café / Snack">☕ Café / Snack</option>
+                    <option value="Farmacia">💊 Farmacia</option>
+                    <option value="Entretenimiento">🎭 Entretenimiento</option>
+                    <option value="Deporte">🏋️ Deporte</option>
+                    <option value="Mascotas">🐾 Mascotas</option>
+                    <option value="Tecnología">💻 Tecnología</option>
                 </select>
             </div>
 
@@ -1673,6 +1689,13 @@
                     <option value="Viajes">✈️ Viajes</option>
                     <option value="Regalos">🎁 Regalos</option>
                     <option value="Educación">📚 Educación</option>
+                    <option value="Restaurant">🍽️ Restaurant</option>
+                    <option value="Café / Snack">☕ Café / Snack</option>
+                    <option value="Farmacia">💊 Farmacia</option>
+                    <option value="Entretenimiento">🎭 Entretenimiento</option>
+                    <option value="Deporte">🏋️ Deporte</option>
+                    <option value="Mascotas">🐾 Mascotas</option>
+                    <option value="Tecnología">💻 Tecnología</option>
                     <option value="Otro">📦 Otro</option>
                 </select>
             </div>
@@ -6388,6 +6411,46 @@ let fixedMonthCursor = null;
 let currentConstraints = { timeframe: 'mensual', account: 'all' };
 let chartLine, chartPieCategory, chartBar, chartProjection, chartAccountBalances, chartCashFlow;
 
+// === MAPA FIJO DE COLORES POR CATEGORÍA ===
+const CATEGORY_COLOR_MAP = {
+    'Alimentación':       '#c9a875',
+    'Transporte':         '#94a8c4',
+    'Membresías':         '#a78bfa',
+    'Servicios':          '#84cc8e',
+    'Compras':            '#e5826b',
+    'Arriendo':           '#f4d35e',
+    'Vehículo':           '#d68fdd',
+    'Bencina':            '#7fc8a9',
+    'Salud':              '#fc8181',
+    'Educación':          '#68d391',
+    'Regalos':            '#f6ad55',
+    'Viajes':             '#63b3ed',
+    'Mercado':            '#b794f4',
+    'Ropa':               '#fbb6ce',
+    'Aseo':               '#9ae6b4',
+    'Campo':              '#90cdf4',
+    'Sueldo / Retornos':  '#48bb78',
+    'Depósito Inversión': '#4299e1',
+    'Pago Tarjeta':       '#667eea',
+    'Dividendo':          '#ed8936',
+    'Devolución Sii':     '#38b2ac',
+    'Eventos':            '#e53e3e',
+    'Otro':               '#718096',
+    'Restaurant':         '#f97316',
+    'Café / Snack':       '#d97706',
+    'Farmacia':           '#ef4444',
+    'Entretenimiento':    '#8b5cf6',
+    'Deporte':            '#06b6d4',
+    'Mascotas':           '#84cc8e',
+    'Tecnología':         '#6366f1',
+};
+
+function getCategoryColor(cat, index) {
+    const FALLBACK = ['#c9a875','#94a8c4','#a78bfa','#84cc8e','#e5826b','#f4d35e','#d68fdd','#7fc8a9','#fc8181','#68d391'];
+    return CATEGORY_COLOR_MAP[cat] || FALLBACK[index % FALLBACK.length];
+}
+
+
 // === Persistencia local ===
 function saveState() {
     try {
@@ -6751,6 +6814,8 @@ function recalculateCoreEngine() {
 
     document.getElementById('card-income-stream').innerText = formatCurrency(incomeSum);
     document.getElementById('card-expense-stream').innerText = formatCurrency(expenseSum);
+    const _mtel = document.getElementById('monthly-total-amount');
+    if (_mtel) _mtel.textContent = formatCurrency(expenseSum);
 
     // Flujo neto
     const netFlow = incomeSum - expenseSum;
@@ -6878,7 +6943,7 @@ function renderTopExpenses(txs) {
         return;
     }
 
-    const palette = ['#c9a875', '#94a8c4', '#a78bfa', '#84cc8e', '#e5826b'];
+    const palette = sorted.map((x,i) => getCategoryColor(x[0], i));
     container.innerHTML = sorted.map(([cat, amount], i) => {
         const pct = total > 0 ? (amount / total) * 100 : 0;
         return `
@@ -7025,7 +7090,7 @@ function renderCardsChart() {
         return;
     }
 
-    const palette = ['#c9a875', '#94a8c4', '#a78bfa', '#84cc8e', '#e5826b', '#319795', '#b7791f', '#805ad5', '#fc8181', '#4a5568'];
+    const palette = sorted.map((x,i) => getCategoryColor(x[0], i));
     
     listEl.innerHTML = sorted.slice(0, 5).map(([cat, amount], i) => {
         const pct = totalSpentCLPEq > 0 ? (amount / totalSpentCLPEq) * 100 : 0;
@@ -7070,7 +7135,9 @@ function renderCardsChart() {
                 tooltip: {
                     callbacks: {
                         label: function(context) {
-                            return ` ${context.label}: $${context.raw.toLocaleString('es-CL')}`;
+                            const total = context.dataset.data.reduce((a,b)=>a+b,0);
+                            const pct = total > 0 ? ((context.raw/total)*100).toFixed(1) : 0;
+                            return ` ${context.label}: $${context.raw.toLocaleString('es-CL')} (${pct}%)`;
                         }
                     }
                 }
@@ -7248,7 +7315,7 @@ function rebuildTimelineCharts(txs, currentAcc, currentTotalFunds) {
         catData = [1];
         chartPieCategory.data.datasets[0].backgroundColor = ['#2a2d33'];
     } else {
-        chartPieCategory.data.datasets[0].backgroundColor = ['#c9a875', '#94a8c4', '#a78bfa', '#84cc8e', '#e5826b', '#f4d35e', '#d68fdd', '#7fc8a9'];
+        chartPieCategory.data.datasets[0].backgroundColor = catLabels.map((l,i) => getCategoryColor(l,i));
     }
 
     chartPieCategory.data.labels = catLabels;
@@ -7596,38 +7663,94 @@ function renderTransactionsTable() {
     }
     document.getElementById('empty-tx-state')?.classList.add('hidden');
 
-    tbody.innerHTML = filtered.map(t => {
-        const badges = {
-            ingreso: `<span class="badge px-2.5 py-1 rounded-md" style="background: var(--accent-sage-soft); color: var(--accent-sage);">Ingreso</span>`,
-            gasto: `<span class="badge px-2.5 py-1 rounded-md" style="background: var(--accent-coral-soft); color: var(--accent-coral);">Gasto</span>`,
-            transferencia: `<span class="badge px-2.5 py-1 rounded-md" style="background: var(--accent-azure-soft); color: var(--accent-azure);">Transf.</span>`
-        };
-        let entities = accountsData[t.origin] ? accountsData[t.origin].name : 'Cuenta inactiva';
-        if (t.type === 'transferencia') entities += ` <i class="fa-solid fa-arrow-right text-[10px] mx-1" style="color: var(--text-muted);"></i> ${accountsData[t.dest] ? accountsData[t.dest].name : 'Inactiva'}`;
+    // Agrupar por mes
+    const groups = {};
+    filtered.forEach(t => {
+        const month = t.date.substring(0, 7); // YYYY-MM
+        if (!groups[month]) groups[month] = [];
+        groups[month].push(t);
+    });
 
-        const amountColor = t.type === 'ingreso' ? 'var(--accent-sage)' : t.type === 'gasto' ? 'var(--accent-coral)' : 'var(--accent-azure)';
-        const sign = t.type === 'gasto' ? '−' : t.type === 'ingreso' ? '+' : '';
+    const monthNames = {
+        '01':'Enero','02':'Febrero','03':'Marzo','04':'Abril','05':'Mayo','06':'Junio',
+        '07':'Julio','08':'Agosto','09':'Septiembre','10':'Octubre','11':'Noviembre','12':'Diciembre'
+    };
 
-        return `
-            <tr style="border-bottom: 1px solid var(--border-subtle);">
-                <td class="py-4 font-mono text-xs" style="color: var(--text-tertiary);">${t.date}</td>
-                <td class="py-4">${badges[t.type]}</td>
-                <td class="py-4 font-medium">${entities}</td>
-                <td class="py-4" style="color: var(--text-secondary);">${t.category}</td>
-                <td class="py-4 text-right font-mono font-medium number" style="color: ${amountColor};">
-                    ${sign}${formatCurrency(t.amount)}
+    const badges = {
+        ingreso: `<span class="badge px-2.5 py-1 rounded-md" style="background: var(--accent-sage-soft); color: var(--accent-sage);">Ingreso</span>`,
+        gasto: `<span class="badge px-2.5 py-1 rounded-md" style="background: var(--accent-coral-soft); color: var(--accent-coral);">Gasto</span>`,
+        transferencia: `<span class="badge px-2.5 py-1 rounded-md" style="background: var(--accent-azure-soft); color: var(--accent-azure);">Transf.</span>`
+    };
+
+    let html = '';
+    const sortedMonths = Object.keys(groups).sort((a,b) => b.localeCompare(a));
+    sortedMonths.forEach((month, gi) => {
+        const txs = groups[month];
+        const [year, mm] = month.split('-');
+        const label = `${monthNames[mm] || mm} ${year}`;
+        const totalGastos = txs.filter(t=>t.type==='gasto').reduce((s,t)=>s+t.amount,0);
+        const groupId = `tx-group-${month.replace('-','')}`;
+        // Primer mes expandido, resto colapsados
+        const isOpen = gi === 0;
+
+        html += `
+            <tr class="tx-group-header cursor-pointer select-none" onclick="toggleTxGroup('${groupId}')"
+                style="background: var(--bg-raised); border-bottom: 1px solid var(--border-subtle);">
+                <td colspan="6" class="py-3 px-2">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-2">
+                            <i id="${groupId}-icon" class="fa-solid ${isOpen ? 'fa-chevron-down' : 'fa-chevron-right'} text-[10px]" style="color:var(--text-muted);"></i>
+                            <span class="text-sm font-semibold">${label}</span>
+                            <span class="badge text-[11px] px-2 py-0.5 rounded-md" style="color:var(--text-tertiary);">${txs.length} mov.</span>
+                        </div>
+                        ${totalGastos > 0 ? `<span class="font-mono text-xs font-medium" style="color:var(--accent-coral);">−${formatCurrency(totalGastos)}</span>` : ''}
+                    </div>
                 </td>
-                <td class="py-4 text-right whitespace-nowrap">
-                    <button onclick="editTransaction('${t.id}')" class="w-8 h-8 rounded-lg cursor-pointer inline-flex items-center justify-center" style="background: rgba(255,255,255,0.03);">
-                        <i class="fa-solid fa-pen text-xs" style="color: var(--accent-gold);"></i>
-                    </button>
-                    <button onclick="deleteTransaction('${t.id}')" class="w-8 h-8 rounded-lg cursor-pointer inline-flex items-center justify-center ml-1" style="background: rgba(255,255,255,0.03);">
-                        <i class="fa-solid fa-trash text-xs" style="color: var(--accent-coral);"></i>
-                    </button>
-                </td>
-            </tr>
-        `;
-    }).join('');
+            </tr>`;
+
+        txs.sort((a,b) => b.date.localeCompare(a.date)).forEach(t => {
+            let entities = accountsData[t.origin] ? accountsData[t.origin].name : 'Cuenta inactiva';
+            if (t.type === 'transferencia') entities += ` <i class="fa-solid fa-arrow-right text-[10px] mx-1" style="color: var(--text-muted);"></i> ${accountsData[t.dest] ? accountsData[t.dest].name : 'Inactiva'}`;
+            const amountColor = t.type === 'ingreso' ? 'var(--accent-sage)' : t.type === 'gasto' ? 'var(--accent-coral)' : 'var(--accent-azure)';
+            const sign = t.type === 'gasto' ? '−' : t.type === 'ingreso' ? '+' : '';
+            const catColor = getCategoryColor(t.category, 0);
+            html += `
+                <tr class="${groupId}-row${isOpen ? '' : ' hidden'}" style="border-bottom: 1px solid var(--border-subtle);">
+                    <td class="py-4 font-mono text-xs" style="color: var(--text-tertiary);">${t.date}</td>
+                    <td class="py-4">${badges[t.type] || ''}</td>
+                    <td class="py-4 font-medium">${entities}</td>
+                    <td class="py-4">
+                        <span class="inline-flex items-center gap-1.5 text-xs px-2 py-1 rounded-md" style="background:${catColor}22; color:${catColor}; border:1px solid ${catColor}44;">
+                            ${t.category}
+                        </span>
+                    </td>
+                    <td class="py-4 text-right font-mono font-medium number" style="color: ${amountColor};">
+                        ${sign}${formatCurrency(t.amount)}
+                    </td>
+                    <td class="py-4 text-right whitespace-nowrap">
+                        <button onclick="editTransaction('${t.id}')" class="w-8 h-8 rounded-lg cursor-pointer inline-flex items-center justify-center" style="background: rgba(255,255,255,0.03);">
+                            <i class="fa-solid fa-pen text-xs" style="color: var(--accent-gold);"></i>
+                        </button>
+                        <button onclick="deleteTransaction('${t.id}')" class="w-8 h-8 rounded-lg cursor-pointer inline-flex items-center justify-center ml-1" style="background: rgba(255,255,255,0.03);">
+                            <i class="fa-solid fa-trash text-xs" style="color: var(--accent-coral);"></i>
+                        </button>
+                    </td>
+                </tr>`;
+        });
+    });
+
+    tbody.innerHTML = html;
+}
+
+function toggleTxGroup(groupId) {
+    const rows = document.querySelectorAll(`.${groupId}-row`);
+    const icon = document.getElementById(`${groupId}-icon`);
+    const isHidden = rows.length > 0 && rows[0].classList.contains('hidden');
+    rows.forEach(r => r.classList.toggle('hidden', !isHidden));
+    if (icon) {
+        icon.classList.toggle('fa-chevron-down', isHidden);
+        icon.classList.toggle('fa-chevron-right', !isHidden);
+    }
 }
 
 // === Interés compuesto ===
@@ -7672,6 +7795,28 @@ function calculateCompoundInterest() {
     chartProjection.update();
 }
 
+
+// === Modal: movimientos de una categoría ===
+function showCategoryMovements(cat) {
+    const period = document.getElementById('tf-mensual')?.classList.contains('active-tf') || true;
+    // Filtra las mismas txs que el dashboard actual usa
+    const allTxs = transactions.filter(t => t.type === 'gasto' && t.category === cat);
+    allTxs.sort((a,b) => b.date.localeCompare(a.date));
+    const total = allTxs.reduce((s,t) => s + t.amount, 0);
+
+    const rows = allTxs.map(t => `
+        <tr style="border-bottom:1px solid var(--border-subtle);">
+            <td class="py-3 font-mono text-xs" style="color:var(--text-tertiary);">${t.date}</td>
+            <td class="py-3 text-sm">${accountsData[t.origin]?.name || t.origin}</td>
+            <td class="py-3 text-right font-mono font-medium number" style="color:var(--accent-coral);">−${formatCurrency(t.amount)}</td>
+        </tr>`).join('');
+
+    document.getElementById('cat-modal-title').textContent = cat;
+    document.getElementById('cat-modal-total').textContent = formatCurrency(total);
+    document.getElementById('cat-modal-body').innerHTML = rows || '<tr><td colspan="3" class="py-6 text-center text-sm" style="color:var(--text-tertiary);">Sin movimientos</td></tr>';
+    document.getElementById('cat-detail-modal').classList.remove('hidden');
+}
+
 // === Gráficos: inicialización ===
 function initCharts() {
     Chart.defaults.font.family = "Manrope, system-ui, sans-serif";
@@ -7713,9 +7858,25 @@ function initCharts() {
         options: {
             responsive: true,
             maintainAspectRatio: false,
+            onClick: function(evt, elements) {
+                if (elements.length > 0) {
+                    const idx = elements[0].index;
+                    const cat = chartPieCategory.data.labels[idx];
+                    showCategoryMovements(cat);
+                }
+            },
             plugins: {
                 legend: { position: 'right', labels: { color: '#a8a29e', font: { size: 11, weight: '500' }, usePointStyle: true, pointStyle: 'circle', boxWidth: 8, padding: 12 } },
-                tooltip: baseStyle.plugins.tooltip
+                tooltip: {
+                    ...baseStyle.plugins.tooltip,
+                    callbacks: {
+                        label: function(ctx) {
+                            const total = ctx.dataset.data.reduce((a,b) => a+b, 0);
+                            const pct = total > 0 ? ((ctx.parsed / total) * 100).toFixed(1) : 0;
+                            return ` ${ctx.label}: ${formatCurrency(ctx.parsed)} (${pct}%)`;
+                        }
+                    }
+                }
             },
             cutout: '68%'
         }
@@ -9127,18 +9288,20 @@ function renderCardsView() {
                         <span class="badge" style="color: var(--text-secondary);"><i class="fa-solid fa-dollar-sign text-[9px] mr-1"></i>CLP</span>
                         <span class="font-mono text-[10px]" style="color: var(--text-tertiary);">${utilClp.toFixed(0)}% usado</span>
                     </div>
-                    <div class="grid grid-cols-3 gap-2 text-center">
-                        <div>
-                            <div class="text-[9px] uppercase tracking-widest" style="color: var(--text-tertiary);">Deuda</div>
-                            <div class="font-mono text-sm font-medium number mt-1" style="color: var(--accent-coral);">${formatCurrency(debtCLP)}</div>
+                    <div class="flex items-end justify-between gap-2">
+                        <div class="flex gap-4">
+                            <div>
+                                <div class="text-[9px] uppercase tracking-widest" style="color: var(--text-tertiary);">Deuda</div>
+                                <div class="font-mono text-sm font-medium number mt-1" style="color: var(--accent-coral);">${formatCurrency(debtCLP)}</div>
+                            </div>
+                            <div>
+                                <div class="text-[9px] uppercase tracking-widest" style="color: var(--text-tertiary);">Disponible</div>
+                                <div class="font-mono text-sm font-medium number mt-1" style="color: var(--accent-sage);">${formatCurrency(availableCLP)}</div>
+                            </div>
                         </div>
-                        <div>
-                            <div class="text-[9px] uppercase tracking-widest" style="color: var(--text-tertiary);">Disponible</div>
-                            <div class="font-mono text-sm font-medium number mt-1" style="color: var(--accent-sage);">${formatCurrency(availableCLP)}</div>
-                        </div>
-                        <div>
-                            <div class="text-[9px] uppercase tracking-widest" style="color: var(--text-tertiary);">Cupo</div>
-                            <div class="font-mono text-sm font-medium number mt-1" style="color: var(--text-secondary);">${formatCurrency(limitCLP)}</div>
+                        <div class="text-right">
+                            <div class="text-[9px] uppercase tracking-widest" style="color: var(--text-tertiary);">Cupo total</div>
+                            <div class="font-mono text-base font-semibold number mt-1" style="color: var(--accent-gold);">${formatCurrency(limitCLP)}</div>
                         </div>
                     </div>
                     <div class="progress-track mt-3" style="height: 4px;">
@@ -9156,18 +9319,20 @@ function renderCardsView() {
                         <span class="badge" style="color: var(--text-secondary);"><i class="fa-solid fa-globe text-[9px] mr-1"></i>USD</span>
                         <span class="font-mono text-[10px]" style="color: var(--text-tertiary);">${utilUsd.toFixed(0)}% usado</span>
                     </div>
-                    <div class="grid grid-cols-3 gap-2 text-center">
-                        <div>
-                            <div class="text-[9px] uppercase tracking-widest" style="color: var(--text-tertiary);">Deuda</div>
-                            <div class="font-mono text-sm font-medium number mt-1" style="color: var(--accent-coral);">${formatUSD(debtUSD)}</div>
+                    <div class="flex items-end justify-between gap-2">
+                        <div class="flex gap-4">
+                            <div>
+                                <div class="text-[9px] uppercase tracking-widest" style="color: var(--text-tertiary);">Deuda</div>
+                                <div class="font-mono text-sm font-medium number mt-1" style="color: var(--accent-coral);">${formatUSD(debtUSD)}</div>
+                            </div>
+                            <div>
+                                <div class="text-[9px] uppercase tracking-widest" style="color: var(--text-tertiary);">Disponible</div>
+                                <div class="font-mono text-sm font-medium number mt-1" style="color: var(--accent-sage);">${formatUSD(availableUSD)}</div>
+                            </div>
                         </div>
-                        <div>
-                            <div class="text-[9px] uppercase tracking-widest" style="color: var(--text-tertiary);">Disponible</div>
-                            <div class="font-mono text-sm font-medium number mt-1" style="color: var(--accent-sage);">${formatUSD(availableUSD)}</div>
-                        </div>
-                        <div>
-                            <div class="text-[9px] uppercase tracking-widest" style="color: var(--text-tertiary);">Cupo</div>
-                            <div class="font-mono text-sm font-medium number mt-1" style="color: var(--text-secondary);">${formatUSD(limitUSD)}</div>
+                        <div class="text-right">
+                            <div class="text-[9px] uppercase tracking-widest" style="color: var(--text-tertiary);">Cupo total</div>
+                            <div class="font-mono text-base font-semibold number mt-1" style="color: var(--accent-gold);">${formatUSD(limitUSD)}</div>
                         </div>
                     </div>
                     <div class="progress-track mt-3" style="height: 4px;">
@@ -10416,6 +10581,33 @@ document.addEventListener('DOMContentLoaded', function() {
     </div>
 </div>
 <!-- ====== FIN MODAL ESTADO IF ====== -->
+
+
+<!-- ====== MODAL: MOVIMIENTOS POR CATEGORÍA ====== -->
+<div id="cat-detail-modal" class="hidden fixed inset-0 flex items-center justify-center z-50 p-4" style="background: rgba(10, 11, 13, 0.85); backdrop-filter: blur(8px);">
+    <div class="surface max-w-lg w-full p-7 shadow-2xl relative max-h-[80vh] flex flex-col">
+        <button onclick="document.getElementById('cat-detail-modal').classList.add('hidden')" class="absolute top-5 right-5 w-8 h-8 rounded-lg flex items-center justify-center cursor-pointer" style="background: rgba(255,255,255,0.04); color: var(--text-tertiary);">
+            <i class="fa-solid fa-xmark text-sm"></i>
+        </button>
+        <h3 id="cat-modal-title" class="font-serif text-xl font-medium tracking-tight mb-1">Categoría</h3>
+        <div class="flex items-center gap-2 mb-5">
+            <span class="text-xs" style="color:var(--text-tertiary);">Total gastado:</span>
+            <span id="cat-modal-total" class="font-mono font-medium" style="color:var(--accent-coral);"></span>
+        </div>
+        <div class="overflow-y-auto flex-1 custom-scrollbar">
+            <table class="w-full text-left border-collapse">
+                <thead>
+                    <tr style="border-bottom:1px solid var(--border-subtle);">
+                        <th class="pb-3 badge" style="color:var(--text-tertiary);">Fecha</th>
+                        <th class="pb-3 badge" style="color:var(--text-tertiary);">Cuenta</th>
+                        <th class="pb-3 badge text-right" style="color:var(--text-tertiary);">Monto</th>
+                    </tr>
+                </thead>
+                <tbody id="cat-modal-body"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
 
 </body>
 </html>
