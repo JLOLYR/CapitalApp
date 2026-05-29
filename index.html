@@ -227,10 +227,10 @@
                 <button onclick="exportDataToJSON()" title="Exportar respaldo" class="w-9 h-9 rounded-lg cursor-pointer flex items-center justify-center transition-colors" style="background: rgba(255,255,255,0.03); color: var(--text-secondary);">
                     <i class="fa-solid fa-file-export text-xs"></i>
                 </button>
-                <button onclick="document.getElementById('import-file').click()" title="Importar respaldo" class="w-9 h-9 rounded-lg cursor-pointer flex items-center justify-center transition-colors" style="background: rgba(255,255,255,0.03); color: var(--text-secondary);">
+                <label for="import-file" title="Importar respaldo" class="w-9 h-9 rounded-lg cursor-pointer flex items-center justify-center transition-colors" style="background: rgba(255,255,255,0.03); color: var(--text-secondary);">
                     <i class="fa-solid fa-file-import text-xs"></i>
-                </button>
-                <input type="file" id="import-file" accept=".json" onchange="importDataFromJSON(event)" class="hidden">
+                </label>
+                <input type="file" id="import-file" accept=".json" onchange="importDataFromJSON(event)" class="hidden" style="position:absolute;width:1px;height:1px;opacity:0;">
 
                 <div class="flex items-center gap-1.5 ml-1 pl-2.5 border-l" style="border-color: var(--border-subtle);">
                     <span id="sync-status-dot" class="w-1.5 h-1.5 rounded-full" style="background: var(--text-muted);"></span>
@@ -893,7 +893,10 @@
                                     <div id="sync-user-info" class="text-xs mt-1" style="color: var(--text-tertiary);">—</div>
                                 </div>
                             </div>
-                            <button onclick="syncDisconnect()" class="btn-ghost px-4 py-2 rounded-lg text-xs font-semibold cursor-pointer">
+                            <button onclick="showReconnectForm()" class="btn-ghost px-4 py-2 rounded-lg text-xs font-semibold cursor-pointer" style="color:var(--accent-gold);" title="Actualizar token">
+                                        <i class="fa-solid fa-key text-[10px] mr-1"></i> Token
+                                    </button>
+                                    <button onclick="syncDisconnect()" class="btn-ghost px-4 py-2 rounded-lg text-xs font-semibold cursor-pointer">
                                 <i class="fa-solid fa-link-slash text-[10px] mr-1"></i> Desconectar
                             </button>
                         </div>
@@ -909,7 +912,10 @@
                             </div>
                             <div class="surface-soft p-4">
                                 <div class="badge mb-1" style="color: var(--text-tertiary);">Gist ID</div>
-                                <div id="sync-gist-id" class="text-[11px] font-mono mt-1 truncate" style="color: var(--text-secondary);">—</div>
+                                <div class="flex items-center gap-2 mt-1">
+                                    <div id="sync-gist-id" class="text-[11px] font-mono truncate flex-1" style="color: var(--text-secondary);">—</div>
+                                    <button onclick="copySyncGistId()" class="shrink-0 text-[10px] px-2 py-1 rounded cursor-pointer" style="background:rgba(255,255,255,0.06); color:var(--accent-gold);">Copiar ID</button>
+                                </div>
                             </div>
                         </div>
 
@@ -983,6 +989,14 @@
                     <!-- Log de actividad -->
                     <div class="surface p-6">
                         <h3 class="font-serif text-lg font-medium tracking-tight mb-4">Actividad reciente</h3>
+                        <div id="reconnect-panel" class="hidden surface-soft p-4 rounded-xl mb-4">
+                            <div class="text-xs font-semibold mb-3" style="color:var(--accent-gold);">Actualizar token de sincronización</div>
+                            <input type="text" id="reconnect-token-input" placeholder="ghp_xxxxxxxxxxxxxxxxxxxx" autocomplete="off" spellcheck="false" inputmode="text" style="font-family:'JetBrains Mono',monospace; font-size:12px; width:100%; margin-bottom:8px;">
+                            <div class="flex gap-2 mt-2">
+                                <button onclick="reconnectWithNewToken()" class="btn-primary flex-1 py-2 rounded-lg text-xs cursor-pointer">Actualizar token</button>
+                                <button onclick="document.getElementById('reconnect-panel').classList.add('hidden')" class="btn-ghost flex-1 py-2 rounded-lg text-xs cursor-pointer">Cancelar</button>
+                            </div>
+                        </div>
                         <div id="sync-log" class="space-y-2 max-h-60 overflow-y-auto custom-scrollbar">
                             <!-- JS -->
                         </div>
@@ -1001,7 +1015,7 @@
                         <form onsubmit="syncConnect(event)" class="space-y-4">
                             <div>
                                 <label class="field-label">Personal Access Token</label>
-                                <input type="password" id="sync-token-input" required placeholder="ghp_xxxxxxxxxxxxxxxxxxxx" autocomplete="off" spellcheck="false" style="font-family: 'JetBrains Mono', monospace; font-size: 13px;">
+                                <input type="text" id="sync-token-input" required placeholder="ghp_xxxxxxxxxxxxxxxxxxxx" autocomplete="off" spellcheck="false" inputmode="text" style="font-family: 'JetBrains Mono', monospace; font-size: 12px; letter-spacing: 0.5px;">
                                 <p class="text-[11px] mt-2" style="color: var(--text-muted);">
                                     Se guarda en este dispositivo. Nadie más que tú lo verá.
                                 </p>
@@ -5367,6 +5381,49 @@ async function syncConnect(event) {
         btn.disabled = false;
         btn.innerHTML = '<i class="fa-solid fa-plug text-xs mr-1"></i> Conectar';
     }
+}
+
+
+
+function showReconnectForm() {
+    const panel = document.getElementById('reconnect-panel');
+    if (panel) {
+        panel.classList.toggle('hidden');
+        const inp = document.getElementById('reconnect-token-input');
+        if (inp) inp.focus();
+    }
+}
+
+async function reconnectWithNewToken() {
+    const inp = document.getElementById('reconnect-token-input');
+    const token = inp ? inp.value.trim() : '';
+    if (!token.startsWith('ghp_') && !token.startsWith('github_pat_')) {
+        showToast('Token inválido — debe empezar con ghp_', 'triangle-exclamation', 'coral');
+        return;
+    }
+    try {
+        const user = await ghValidateToken(token);
+        syncConfig.token = token;
+        syncConfig.username = user.login;
+        saveSyncConfig();
+        document.getElementById('reconnect-panel')?.classList.add('hidden');
+        renderSyncView();
+        showToast('Token actualizado para @' + user.login);
+        logSync('Token actualizado: @' + user.login, 'ok');
+        setSyncState('ok');
+    } catch(e) {
+        showToast('Token inválido o sin permisos de Gist', 'triangle-exclamation', 'coral');
+    }
+}
+
+function copySyncGistId() {
+    const id = syncConfig.gistId;
+    if (!id) { showToast('Sin Gist ID guardado', 'triangle-exclamation', 'coral'); return; }
+    navigator.clipboard.writeText(id).then(() => {
+        showToast('Gist ID copiado — pégalo en el otro dispositivo');
+    }).catch(() => {
+        prompt('Copia este Gist ID manualmente:', id);
+    });
 }
 
 function syncDisconnect() {
